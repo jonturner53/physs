@@ -1,0 +1,10 @@
+This directory implements the fizz operations console.
+This consists of two parts, a server that runs on the fizz
+and a user interface that runs in the user's browser.
+These communicate using commands encoded in get requests.
+
+The server is in server.js and is runs under node.js.
+It uses the Express web application framework.
+Static resources (html, images, javascript files)
+are in the static directory. The file static/index.html
+is the top level of the console user interface code.

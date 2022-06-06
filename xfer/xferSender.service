@@ -1,0 +1,13 @@
+[Unit]
+Description=Transfer Sender for Programmable Seawater Scanner
+Requires=multi-user.target
+After=multi-user.target
+
+[Service]
+Type=forking
+PIDFile=/usr/local/physs/xfer/pid
+ExecStart=/usr/local/physs/xfer/startSender
+Nice=-1
+
+[Install]
+WantedBy=graphical.target

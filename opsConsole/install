@@ -1,0 +1,19 @@
+#! /bin/bash
+echo "first time install for opsConsole"
+
+echo "setting up pid and password files"
+echo 0 >pid
+cp password ..
+
+echo "running npm commands; repond to queries"
+npm init
+npm install express --save
+npm install body-parser --save
+
+echo "installing systemd service file"
+cp opsConsole.service /lib/systemd/system
+systemctl daemon-reload
+systemctl enable opsConsole.service
+
+echo "starting opsConsole"
+systemctl start opsConsole

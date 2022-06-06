@@ -1,0 +1,12 @@
+[Unit]
+Description=Setup iptables rules for physs
+Requires=networking.service
+After=networking.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/physs/iptables/physsIpTables
+Nice=-1
+
+[Install]
+WantedBy=ssh.service

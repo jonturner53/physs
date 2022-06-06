@@ -1,0 +1,387 @@
+/*************** Extracted from standard mode library ***********/
+
+    lib.backSettings = [ 0, 1, 2, 3, 4, 8 ];
+
+    lib.cookRecipe = "classic"; // or "nuvo"
+    lib.classicSettings = { smooth: [23, 12], integerize: [1, 1]};
+    lib.nuvoSettings = { smooth: [8, 4], integerize: [3, .5]};
+
+    // wavelength range for computing cdom 
+    // absorption parameters
+    lib.CDOM_MINWAVE = 390;
+    lib.CDOM_MAXWAVE = 490;
+
+    // wavelength range for computing sim index
+    lib.SIM_MINWAVE = 400; 
+    lib.SIM_MAXWAVE = 700;
+
+    lib.absWavelengths = lib.range(lib.SIM_MINWAVE, lib.SIM_MAXWAVE);
+
+    /** Apply gaussian filter to a vector.
+     *  @param ivec is a vector of floats (assumed to be longer than 2w+1)
+     *  @param width specifies the width of the filter; specifically,
+     *  the filter has 2*width+1 terms
+     *  @param sigma specifies the "spread" of the filter
+     *  @return a vector of floats with same length as ivec
+     */
+    lib.smooth = function(ivec, params=lib.classicSettings.smooth) {
+        let [width, sigma] = params;
+        // compute filter terms
+        let fsum = 0.0;
+        let filter = [];
+        for (let i = 0; i < 2*width+1; i++) {
+            let x = 0.0 + i - width;
+            filter.push(Math.exp(-(x*x)/(2.*sigma*sigma)));
+            fsum += filter[i];
+        }
+        for (let i = 0; i < 2*width+1; i++) filter[i] /= fsum;
+    
+        // apply filter to left end of vector;
+        let ovec = []; ovec.push(ivec[0]);
+        for (let i = 1; i < width; i++) {
+            let s = 0.0; let t = 0.0;
+            for (let j = 0; j < 2*i+1; j++) {
+                s += filter[j+width-i] * ivec[j];
+                t += filter[j+width-i];
+            }
+            ovec.push(s/t);
+        }
+    
+        // apply filter to middle of vector
+        for (let i = width; i < ivec.length-width; i++) {
+            let s = 0.0;
+            for (let j = 0; j < 2*width+1; j++)
+                s += filter[j] * ivec[(i-width)+j];
+            ovec.push(s);
+        }
+    
+        // apply filter to right end
+        for (let i = 1; i < width; i++) {
+            let s = 0.0; let t = 0.0;
+            for (let j = 0; j < 2*i+1; j++) {
+                s += filter[j+width-i] * ivec[(ivec.length-1)-j];
+                t += filter[j+width-i];
+            }
+            ovec.push(s/t);
+        }
+        ovec.push(ivec[ivec.length-1]);
+        return ovec;
+    };
+
+    /** Integerize a function using a specified method.
+     *  @param x is a vector x coordinates
+     *  @param y is a vector y coordinates; together x and y define a function
+     *  @param span is an integer interval [lo,hi) defining output x coordinates
+     *  @param method specifies a polynomial interpolation ("classic") or a
+     *  weighted average of nearby points ("nuvo")
+     *  @param params is a pair of integerization parameters; for "classic",
+     *  it specifies the degree and width of a polynomial interpolation,
+     *  for "nuvo", it specifies the width and sigma value for a guassian
+     *  weighted average
+     *  @return an integerized function defined at values in the range [lo,hi-1]
+     */
+    lib.integerize = function(x, y, span=[lib.MINWAVE, lib.MAXWAVE],
+                                    method="classic", settings=null) {
+        let [lo, hi] = span;
+
+        let ivals = new Array(hi - lo); // integerized function values
+        ivals.fill(0);
+
+        if (method == "classic") {
+            if (settings == null) settings = lib.classicSettings.integerize;
+            let [degree, width] = settings;
+            let i = 0;
+            for (let w = lo; w < hi; w++) {
+                while (i < x.length && x[i] <= w) i++;
+                if (i == 0 || i >= x.length) break; // shouldn't happen
+                if (x[i-1] == w) {  // unlikely but possible
+                    ivals[w-lo] = y[i]; continue;
+                }
+                let xrange = lib.vectorSubtract(x.slice(i-width, i+width), w);
+                    // shift x range so it's centered at zero;
+                    // better numerically and simplifies evaluation
+                let coef = lib.polyfit(xrange, y.slice(i-width, i+width),
+                                       degree);
+                ivals[w-lo] = coef[0];
+            }
+        } else { // method == "nuvo"
+            if (settings == null) settings = lib.nuvoSettings.integerize;
+            let [width, sigma] = settings;
+            let i = 0;
+            for (let w = lo; w < hi; w++) {
+                while (x[i] <= w) i++;
+                let s = 0; let twt = 0;
+                for (let j = i-width; j < i+width; j++) {
+                    let wt = Math.exp(-.5*(((w-x[j])/sigma)**2));
+                    s += wt * y[j]; twt += wt;
+                }
+                ivals[w-lo] = s/twt;
+            }
+        }
+       return ivals;
+    };
+
+    /** Compute a "cooked" spectrum for a given
+     *  raw spectrum.
+     *  @param sample is a raw spectrum to be cooked
+     *  @param dark is associated dark spectrum 
+     *  @param wavelengths is an optional vector of raw
+     *  wavelengths; it defaults to lib.rawWavelengths
+     *  @param recipe is a string with two possible values "classic",
+     *  specifying classic opd method, and "nuvo", specifying new
+     *  method developed for physs
+     *  @param args is a pair of arguments that specifies the guassian
+     *  smoohing parameters when recipe=="classic" and the polynomial
+     *  interpolation parameters used for integerization when
+     *  recipe=="nuvo"
+     *  @return the resulting cooked spectrum
+     */
+    lib.cook = function(sample, dark, wavelengths=lib.rawWavelengths,
+                        recipe=lib.cookRecipe, settings=null) {
+        if (recipe == "classic") {
+            if (settings == null) settings = lib.classicSettings;
+            return lib.vectorSubtract(
+                lib.integerize(wavelengths, lib.smooth(sample, settings.smooth),
+                               [lib.MINWAVE,lib.MAXWAVE],
+                               "classic", settings.integerize),
+                lib.integerize(wavelengths, lib.smooth(dark, settings.smooth),
+                               [lib.MINWAVE,lib.MAXWAVE],
+                               "classic", settings.integerize));
+        } else { // recipe == "nuvo"
+            if (settings == null) settings = lib.nuvoSettings;
+            return lib.integerize(wavelengths,
+                                  lib.vectorSubtract(sample, dark),
+                                  [lib.MINWAVE,lib.MAXWAVE],
+                                  "nuvo", settings.integerize);
+        }
+    };
+
+    /** Calculate the cdom absorption spectrum.
+     *  @param spect is a filtered raw spectrum
+     *  @param prereq is a vector of three prerequisite spectra
+     *  return the cdom absorption spectrum
+     */
+    lib.absorption = function(spect, prereq, wavelengths=lib.rawWavelengths,
+                              recipe=lib.cookRecipe, settings=null) {
+    	if (settings == null) {
+    		settings = (recipe == "classic" ? lib.classicSettings :
+    										  lib.nuvoSettings);
+        }
+        let absorp = lib.rawAbsorption(
+                         lib.cook(spect, prereq[0], wavelengths,
+                                  recipe, settings),
+                         lib.cook(prereq[1], prereq[2], wavelengths,
+                                  recipe, settings));
+        if (settings == "nuvo")
+            absorp = lib.smooth(absorp, settings.smooth);
+        return absorp;
+    }
+
+    /** Calculate the cdom absorption spectrum.
+     *  @param sample is a cooked sample spectrum for which
+     *  absorption is required
+     *  @param ref is corresponding reference spectrum
+     *  return the cdom absorption
+     */
+    lib.rawAbsorption = function(sample, ref) {
+        let absorp = new Array(sample.length); 
+        for (let i = 0; i < sample.length; i++) {
+            absorp[i] = 
+                (ref[i] > .0000001 && sample[i] > .0000001 ?
+                    Math.log(Math.max(1.,ref[i]) / Math.max(1.,sample[i])) /
+                    lib.waveguideLength : 0);
+        }
+        return absorp;
+    };
+
+    /** Calculate cdom absorption and slope parameters.
+     *  @param absorp is an absorption spectrum
+     *  @return the absorp440 and slope parameters
+     */
+    lib.absorptionParameters = function(absorp) {
+        let shifted = lib.vectorShift(absorp);
+        let x = []; let y = [];
+        for (let i = lib.CDOM_MINWAVE-lib.MINWAVE;
+             i < lib.CDOM_MAXWAVE-lib.MINWAVE; i++) {
+            if (shifted[i] > 0) {
+                x.push(i-(440-lib.MINWAVE));
+                y.push(Math.log(shifted[i]));
+            }
+        }
+        if (x.length < 20) return [0., 0.];
+        let z = lib.fitline(x,y);
+        return [Math.exp(z[0]), -z[1]];
+    };
+
+    lib.absorpExpCurve = function(a440, slope) {
+        let n = lib.cookedWavelengths.length;
+        let y = []; y.length = n;
+        for (let i = 0; i < n; i++) {
+            y[i] = a440 * Math.exp(-slope * (i + (lib.MINWAVE - 440)));
+        }
+        return y;
+    };
+
+    /** Calculate the absorbance spectrum for
+     *  unfiltered samples.
+     *  @param sample is a sample spectrum for which
+     *  absorbance is required
+     *  @param ref is the corresponding reference spectrum
+     *  @param recipe is the cook receipe; if "nuvo", the absorbance
+     *  spectrum is smoothed before returning
+     *  @param settings specifies the cook settings
+     *  return the (possibly smoothed) absorbance values
+     */
+    lib.absorbance = function(spect, prereq, wavelengths=lib.rawWavelengths,
+                              recipe=lib.cookRecipe, settings=null) {
+    	if (settings == null)
+    		settings = (recipe == "classic" ? lib.classicSettings :
+    										  lib.nuvoSettings);
+        let absorb = lib.rawAbsorbance(
+                         lib.cook(spect, prereq[0], wavelengths,
+                                  recipe, settings),
+                         lib.cook(prereq[1], prereq[2], wavelengths,
+                                  recipe, settings));
+        if (recipe == "nuvo") absorb = lib.smooth(absorb, settings.smooth);
+    	return absorb;
+    },
+
+    lib.rawAbsorbance = function(sample, ref) {
+        let absorb = [];
+        for (let i = 0; i < sample.length; i++) {
+            absorb.push(Math.log10(Math.max(1., ref[i]) /
+                                   Math.max(1., sample[i])));
+        }
+        return absorb;
+    },
+
+    /** Compute the similarity index of a pair of vectors.
+     *  @param x is a vector
+     *  @param y is a vector of the same length
+     *  @param lo is an optional argument used with hi to specify a sub-range
+     *  of the index values over which the sim index is computed
+     *  @param hi is an optional argument used with lo to specify a sub-range
+     *  of the index values over which the sim index is computed
+     */
+    lib.simIndex = function(x, y, rake=[lib.SIM_MINWAVE-lib.MINWAVE,
+                                  		lib.SIM_MAXWAVE-lib.MINWAVE] ) {
+        return lib.angularSim(x, y, rake);
+    };
+
+    lib.qaDark = function(dark) {
+        if (dark == null || dark == undefined) return -1;
+        dark = dark.slice(lib.rawLo, lib.rawHi);
+        let avg = lib.vectorAvg(dark);
+        let max = lib.vectorMax(dark);
+        let min = lib.vectorMin(dark);
+        let qa = (avg < 800 ? -1 : (avg < 1000 ? 0 : 1));
+        qa = (max > 2 * avg ? -1 : (max > 1.5 * avg ? 0 : 1));
+        qa = (min < .8 * avg ? -1 : (min < .9 * avg ? 0 : 1));
+        return qa;
+    };
+
+    lib.qaFiltered = function(filtered, dark) {
+        let qa = lib.qaDark(dark);
+        let favg = lib.vectorAvg(filtered.slice(lib.rawLo, lib.rawHi));
+        let davg = lib.vectorAvg(dark.slice(lib.rawLo, lib.rawHi));
+        let r = favg / davg;
+        qa = Math.min(qa, (r < 3 ? -1 : (r < 5 ? 0 : 1)));
+        return qa;
+    };
+
+    lib.qaUnfiltered = function(unfiltered, dark) {
+        let qa = lib.qaDark(dark);
+        let uavg = lib.vectorAvg(unfiltered.slice(lib.rawLo, lib.rawHi));
+        let davg = lib.vectorAvg(dark.slice(lib.rawLo, lib.rawHi));
+        let r = uavg / davg;
+        qa = Math.min(qa, (r < 3 ? -1 : (r < 5 ? 0 : 1)));
+        return qa;
+    };
+
+    lib.qaReference = function(reference, dark) {
+        if (!dark || !reference) return -1;
+        let qa = lib.qaDark(dark);
+        let max = lib.vectorMax(reference);
+        qa = Math.min(qa, (max > 60000 || max < 30000 ? -1 :
+                           (max < 50000 ? 0 : 1)));
+        return qa;
+    };
+
+    lib.qaAbsorption = function(filtered, prereq) {
+        let qa = lib.qaReference(prereq[1], prereq[2]);
+        qa = Math.min(qa, lib.qaFiltered(filtered, prereq[0]));
+
+        // check absorption level at 440 nm
+        let absorp = lib.absorption(filtered, prereq);
+        let [a440, slope] = lib.absorptionParameters(absorp);
+        qa = Math.min(qa,
+                      (a440 < (Math.log(1/.95)/lib.waveguideLength) ? -1 :
+                       (a440 < (Math.log(1/.9)/lib.waveguideLength) ? 0 : 1)));
+        
+        // check similarity to exponential curve
+        let exp = lib.absorpExpCurve(a440, slope);
+        let shifted = lib.vectorShift(absorp);
+        let simx = lib.angularSim(
+                       lib.deriv(exp.slice(0, 600 - lib.MINWAVE), 1),
+                       lib.deriv(shifted.slice(0, 600 - lib.MINWAVE), 1));
+        qa = Math.min(qa, (simx < .8 ? -1 : (simx < .9 ? 0 : 1)));
+        
+        return qa;
+    };
+
+    lib.qaAbsorbance = function(unfiltered, prereq) {
+        let qa = lib.qaUnfiltered(unfiltered, prereq[0]);
+        qa = Math.min(qa, lib.qaFiltered(prereq[1], prereq[2]));
+
+        let absorb = lib.absorbance(unfiltered, prereq);
+        let avg = lib.vectorAvg(absorb);
+        qa = Math.min(qa, (avg < Math.log10(1/.98) ? -1 :
+                           (avg < Math.log10(1/.95) ? 0 : 1)));
+        return qa;
+    };
+
+    /** Smooth a function by fitting a polynomial to a window surrounding
+     *  each point in the function, then evaluating the polynomial at the point
+     *  @param f is a vector of floats (assumed to be longer than 2*width+1)
+     *  that specifies the value of the function at each point; the points are
+     *  assumed to be equally spaced
+     *  @param degree is the degree of the polynomial fit to each neighborhood
+     *  @param width specifies the size of the "neighborhood" used to fit
+     *  polynomial
+     *  @param dvx is the index of a derivative to return instead of f
+     *  @return if dvx == 0 or is omitted, return  a smooth version of f;
+     *  otherwise the derivative of the smooth version of f.
+     */
+    lib.polySmooth = function(f, degree, width, dvx = 0) {
+        dvx = Math.min(dvx, degree);
+        let n = f.length;
+        let z = new Array(n);
+        let factor = 1;
+        for (let i = 1; i <= dvx; i++) factor *= i;
+        let polyRange = lib.range(-width, width+1);
+        for (let i = 0; i < n; i++) {
+            if (i < width || i >= n - width) z[i] = 0;
+            else {
+                let coef = lib.polyfit(polyRange, f.slice(i-width, i+width+1),
+                                       degree);
+                z[i] = coef[dvx] * factor;
+            }
+        }
+        return z;
+    };
+
+    /** Compute scattering loss.  */
+    lib.scat = function(a, b) {
+        var X = [];
+        for (let j = lib.SIM_MINWAVE; j < lib.SIM_MAXWAVE; j++)
+            X.push(a * Math.pow(j, -b));
+        return X;
+    };
+
+    /** Compute detrital absorbance spectrum.  */
+    lib.detAbs = function(a, b) {
+        var X = [];
+        for (let j = lib.SIM_MINWAVE; j < lib.SIM_MAXWAVE; j++)
+            X.push(a * Math.exp(-b * (j-400)));
+        return X;
+    };

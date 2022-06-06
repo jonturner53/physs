@@ -1,0 +1,7 @@
+# /bin/bash
+#
+# Start the server that provides access to summary data files on
+# cloud server.
+#
+cd /usr/local/physs/summarize
+node server.js "" 28108 >stdout 2>stderr &

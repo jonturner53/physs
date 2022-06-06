@@ -1,0 +1,57 @@
+run 1000 120
+    # 100 cycles, 120 minute between cycles
+    # must appear before any other script commands
+    # if cycle count is zero, runs forever
+    # if run directive is omitted, both arguments 
+    # default to zero
+on 1 8
+    # execute following commands on the first cycle
+    # of each successive group of eight cycles
+    announce starting reference phase
+    referenceSample 2 4 2
+        # pump 2 ml of reference water to waveguide at 4 ml/m
+        # if out of reference water, substitute filtered sample water,
+        # pumping at 2 ml/m
+    optimizeIntegrationTime 1 4 2
+        # spectrometer integration time to maximize sensitivity
+        # if not successful on first attempt, add 1 ml of reference water
+        # (or filtered sample water if no ref water available) and re-try;
+        # pump at 4 ml/m for reference water, 2 ml/m for sample water
+        # repeat up to 5 times, before giving up
+    getDark dark
+        # obtain a dark spectrum from spectrometer
+        # write to rawData file, with label dark
+    checkLights
+        # check that spectrometer lights are working
+    getSpectrum reference dark
+        # obtain a spectrum from the spectrometer
+        # write to rawData file with label reference
+        # include link to most recent dark spectrum
+
+announce starting filtered sample phase (aka cdom)
+filteredSample 12 3 0 0
+    # fill spectrometer with filtered sample,
+    # possibly mixed with reagent1 and/or r2
+    # first argument specifies the total volume to
+    # be pumped (2 ml), second specifies rate (2 ml/m)
+    # second argument specifies the fraction of the
+    # total volume that is reagent1
+    # third argument specifies the fraction of the
+    # total volume that is reagent2
+    # aborts if an over-pressure condition is 
+    # detected, causing the cycle to restart; if
+    # too many failures, sample collection suspended
+getDark dark
+getSpectrum filtered dark reference
+    # write spectum to rawData with label filtered
+    # include link to most recent dark and 
+    # reference spectra
+recordDepth
+filteredSample .1 -2 0 0
+announce starting unfiltered sample phase (aka disc)
+unfilteredSample .75 1 0 0
+getSpectrum concentrate dark filtered
+unfilteredSample .1 1 0 0
+getSpectrum concentrate dark filtered
+unfilteredSample 4 5 0 0
+getSpectrum unfiltered dark filtered

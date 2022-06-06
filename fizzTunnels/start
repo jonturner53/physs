@@ -1,0 +1,8 @@
+#! /bin/sh
+# 
+# Start fizz tunnels with an initial delay built in. This is designed
+# to allow time for sockets on coolcloud to release, following a shutdown.
+
+cd /usr/local/physs/fizzTunnels
+(/bin/sleep 80 ; ssh -nNT coolcloud >stdout 2>stderr) &
+echo $! >pid

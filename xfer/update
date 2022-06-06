@@ -1,0 +1,7 @@
+#! /bin/bash
+echo "updating installation for xfer"
+
+echo "replacing systemd service file"
+cp xferSender.service /lib/systemd/system
+systemctl daemon-reload
+systemctl enable xferSender.service

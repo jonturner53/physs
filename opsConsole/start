@@ -1,0 +1,8 @@
+#! /bin/sh
+# 
+# Start the server for the operations console
+#
+
+cd /usr/local/physs/opsConsole
+node server.js localhost 28200 >stdout 2>stderr &
+echo $! >pid

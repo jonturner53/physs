@@ -1,0 +1,11 @@
+This directory contains a utility that issues email alerts when
+newly acquired physs data shows elevated sim index values for
+karenia brevis. The program sender.js implements the utility and
+is called once a day by the cron daemon. Actually, the cron
+daemon invokes the sender shell script which runs "node sender.js".
+
+The recipients file contains a list of email addresses for those
+people who are to receive alert messages. Sender.js maintains
+an alertStatus file for each physs. This is stored in the
+physs's data directory and allows sender to keep track of which
+records have already been processed.

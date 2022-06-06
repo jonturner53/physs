@@ -1,0 +1,10 @@
+#! /bin/bash
+echo "first-time installation for fizzTunnels"
+
+echo "installing systemd service file"
+cp fizzTunnels.service /lib/systemd/system
+systemctl daemon-reload
+systemctl enable fizzTunnels.service
+
+echo "starting fizzTunnels"
+systemctl start fizzTunnels

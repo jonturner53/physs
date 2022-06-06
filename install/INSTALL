@@ -1,0 +1,58 @@
+Notes for installing the physs software on a new BeagleBone
+
+First, install the proper version of the BeagleBone OS
+(debian 10.3, 2020-04-06)
+
+ssh debian@192.168.7.2 (password temppwd)
+
+# setup standard user accounts
+sudo su
+adduser guru (name it Adminstrative account)
+usermod -aG sudo guru (give sudo privileges to guru)
+exit
+logout
+
+ssh guru@192.168.7.2
+mkdir .ssh
+chmod 700 .ssh
+cat /dev/null >.ssh/authorized_keys
+vi .ssh/authorized_keys
+	#add public keys for all sys admins
+chmod 644 .ssh/authorized_keys
+
+# disable debian account and change root password
+sudo su
+usermod --lock --expiredate 1970-01-02 debian
+passwd <secureRootPassword>
+
+# create physs directory, download code and install
+cd /usr/local
+git clone https://bitbucket.org/MoteOceanTechnology/physs
+cd physs/install
+./install1
+
+vi /etc/ssh/sshd_config (change Port 22 to 28202)
+systemctl restart ssh
+# in separate window on laptop, type
+ssh fizz (to verify that key-based login to guru works)
+# transfer a copy of /root/.ssh/id_rsa.pub version into
+# coolcloud:~fizz/.ssh/authorized_keys
+ssh coolcloud (login to verify key, accept cert and logout)
+
+./install2
+
+reboot
+
+# To configure with a specific serial number (not 99)
+# Edit coolcloud:~fizz/.ssh/authorized_keys, replacing comment
+#   "Physs 99 ..." at the end of the line for this physs with
+#   "Physs sn" where sn is new serial number;
+#   edit /root/.ssh/id_rsa.pub entry to match
+# then, login to coolcloud and type nextRecord sn
+#   where sn is desired serial number; the output is
+#   the record number of the next valid record for the
+#   specified serial number
+# then, login to console for new beaglebone and type
+#   "changeSerialNumber sn nr" where nr is the record number
+#   obtained in previous step
+# then, type reboot in the console

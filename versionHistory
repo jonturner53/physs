@@ -1,0 +1,448 @@
+Version History for Programmable Hyperspectral Seawater Scanner
+
+Version 0.0.0 - 10/7/2017
+- complete version of collector, with webConsole support
+- no analyzer yet, but includes simple observer supporting
+  remote viewing of rawData
+
+Version 0.0.1 - 1/7/2018
+- version for deployment on sailboat
+- support for multiple hardware configurations
+- single cycle mode
+
+Version 0.0.2 - 1/9/2018
+- got observer working again
+- removed excess stuff from config file on output when hardwareConfig==BASIC
+- in DataStore changed error messages about unfamiliar labels to warnings
+  arises in singleCycleMode
+- hid mixing valve overlays in BASIC mode
+- updating config file after calibration
+- save config file when stopping or quitting
+- re-read config file when resuming or restarting
+- modified purge to account for hardwareConfig
+- delay shutdown until at least 45 seconds after start,
+  allowing admin to login to beaglebone and halt shutdown to allow
+  diagnosis of problem
+- added explicit record type to rawData file
+- added cycleSummary records
+
+Version 0.0.3 - 1/22/2018
+- eliminated blank lines from rawData file and
+  made observer tolerant of blank lines
+- eliminated reboot counter
+- added CollectorState object and collector.state file to handle
+  information that must be preserved across power cycles; inlcudes
+  cycleNumber, pump max rates, fluid levels, integration time,
+  currentRecordIndex and recordMap for rawData file
+- changed handling of lights; user turns on lights at start of
+  cycle, off at end of cycle; getSpectrum sets shutter but just
+  assumes the lights are on, rather than turning them on and off
+- modified code to use unique record numbers (no repeats)
+- modified gui to allow cycle number to be updated through gui;
+  added reload command to collector, so gui can force reloading
+  of script and config file after a save;
+  disabled editing of state file
+
+====================
+
+Version 0.0.4
+
+- added opdClassicAnalysis.py that reproduces output from old opd
+  from rawData file and sends output to stdout (which can
+  then be directed to ttyO4)
+- fixed bug in Config, that caused read failures when whitespace
+  appeared at end of line
+- dropped update from Config; no longer any reason to do this
+- added xferClient.py on physs sends data to xferServer.py on coolcloud,
+  which organizes data into separate directories for each deployment,
+  with daily files
+- added serial number and deployment index to every record;
+  added reset, script and config record types
+- added delay after power-up so that auxiliary pump on dock has
+  time to re-fill pipe after sleep
+- notes on record types. Each deployment record marks the start of
+  a new deployment. One is generated whenever physs starts with cycle 1,
+  or user hits the restart button. Config record and script records
+  hold contents of config file and script file respectively. These
+  are saved following each deployment record and following whenever
+  user saves config or script. Reset record generated whenever user
+  resumes operation or cycle restarted following an overpressure
+  interrupt. Allows coolcloud to weed out data from failed
+  cycles. CycleSummary at end of each cycle.
+
+====================
+
+Version 0.0.5
+
+- increased delay for leak detector to 5 ms
+- modified xferServer.py to make it more robust against json decoding
+  errors
+- added code to ignore first two values in returned spectrum;
+  apparently always 0.00 and 28789.28.
+- completed opdClassicAnalysis and have integrated it into cloud server
+- simplified organization of data files on cloud server
+- added maxPressureRecorded to PressureSensor and added pressure item
+  to cycleSummary record and log message
+- added filename argument to opdClassicAnalysis to facilitate verification
+  of results
+- added flush() method to end of sample cycle
+- made purge() a built-in operation, rather than scripted
+- added locking to DataStore to make all method calls mutually exclusive
+- modified debug logger to send copy of debug messages to dataStore
+  (new record type - debug); this required locking in DataStore and
+  suspension of debug messages issued before collector state is read
+- add code to log all console commands and replies
+- fixed bug in basicTest (shutter signal associated with wrong pin)
+- add locking to low level hardware modules, so not dependent on
+  higher level control to prevent conflicting accesses by ConsoleInterp
+  and ScriptInterp; also added locking to Config
+- renaming - pss1 to physs/fiz
+- fixed threading bug involving CollectorState and DataStore
+- fixed major performance bug in xferClient - caused it to use 50% of cpu
+- implemented dataAnalyzer
+- corrected bug in xferClient that left files open
+- added power buttons to gui and now starting with just instrument power
+- modified xferClient to skip out-of-order records
+- added fizzTunnels to enable control of physs through coolcloud
+- adjusted powerFail code to trigger failure when battery power
+  drops below 10.5V; also delayed shutdown to allow time for messages
+  to propagate to coolcloud
+- added download button to dataAnalyzer
+- added waveguideLength to config file and to deployment records
+- eliminated unnecessary file reloading in dataAnalyzer.py
+- added a440 history and slope history to dataAnalyzer charts
+- added optional third parameter to run command to disable port switching;
+  default value is on.
+- modified referenceSample to simply pump requested volume;
+  separate optimizeIntegrationTime operation.
+- added commLink button on console, allowing user to manually disable
+  commLink; reboot (possibly remote) required to re-enable link;
+  added disableCommLinkWhenSleeping config variable and implemented
+  mechanism to turn off commLink power and ssh tunnels when sleeping;
+  both are re-enables when waking up to start new cycle
+- added significance threshold to dataAnalyzer absorption and absorbance charts
+- rewrote CollectorState to require "clients" push state updates to
+  CollectorState object, which then writes out the state file; this means
+  that the file is updated whenever a record is written to the rawData file
+- rewrote Config to eliminate pushing of config data out to clients;
+  now, config variables just reside in Config object, not in clients
+
+==============================
+
+Version 0.0.6
+
+- added code to turn off power to usb between cycles in order to reduce
+  power drain from spectrometer; renamed disableCommLinkWhenSleeping config
+  variable to powerSave; now using for both comm link and usb
+- added stderr folder in /usr/local/lib/fizz; on startup, stderr files
+  are moved there for post-mortem analysis
+- rewrote dataAnalyzer (now analysisServer, analysisConsole); more
+  structured javascript; background retrieval of all spectra using
+  callbacks; background computation of absorption parameter history
+  and sim index history.
+- rewrote data transfer utilities to prevent lost spectra; new
+  version transfers blocks of 20 records with application-level
+  acknowlegement and duplicate filtering at receiver
+- added max pressure to console display; improved implementation
+  of snapshot
+- added update button to turn periodic updating on/off
+- implemented limit of 2000 spectra per raw data file
+- added spectrometer power button to interface, switches usb on/off and
+  re-initializes spectrometer when turning on
+- added chart dump feature to analysis console
+- changed integration time to microsecond resolution
+- re-wrote webConsole.html, now calling it opsConsole.html;
+  re-worked calibration code to make it more reliable
+
+1/1/2019
+- programmable version of analysisConsole
+- added depth sensor and location sensor, along with new script
+  operations to record depth and location; recorded values saved in
+  cycle summary; location and depth displayed in analysis console on
+  headers of spectrum charts
+- added mechanism to transfer summary data to gcoos
+- added calibration mechanism to depth sensor
+- added status page on coolcloud, to facilitate monitoring
+  of key data values from deployed PHYSS units
+- developed firmware for Arduino microcontroller
+- modified data collection software to handle the second generation
+  PHYSS hardware configuration, in addition to the original configuration
+
+3/25/2019
+- refinements to mode libraries, making lib generic; classic opd analysis
+  routines moved to classic library, not standard; also, switched to
+  true correllation coefficient, rather than approximation
+- many small refinements and bug fixes for data collector
+
+version 0.0.7 - 2/15/2020
+- implemented arduino-based powerSave feature (to support powering off
+  the Beaglebone between cycles)
+- removed code for version 1 hardware (pre-arduino)
+- improvements to model composition analsyis
+
+version 0.0.8 - 3/3/2021
+- major overhaul of analysis console and libraries; zoom and
+  cursor position reporting; single wide text window;
+  user arguments and menus for chart mode libraries;
+  complete code restructuring using classes, centralized event
+  reporting and multiple source files; re-wrote and simplified
+  mode libraries
+- overhaul of communication with arduino to improve robustness;
+  includes repeated message transmissions when no response to
+  command or query
+- simplified installation procedures, eliminating compilation of
+  libusb and seabreeze; created reconfig command to more easily
+  change serial number used by Beaglebone
+- added Status object to maintain BB-resident copies of sensor
+  values (power, temp, pressure, leak) with periodic retrieval
+  from arduino; removed old sensor objects
+- Simplified coding of chart modes by passing arguments for commonly-used
+  items like current spectrum. Also simplified naming.
+  Added mechanism to adjust global settings.
+  Added . prefix to user args and menus, to indicate arguments that
+  only apply to chart method (so no need to recompute time-series)
+  Added mechanism to restrict time-range for time-series.
+  Added QA support to time-series. Improved QA methods.
+  Added error log window for program errors (rather than alerts)
+- Restructured operations console, splitting into multiple js files.
+  Simplified gui; single text window and hidden login controls
+  and command line.
+- Added mode to standard library for creating model files.
+- Added physs information page to analysis console.
+- Added phyto model information page to analysis console.
+- Added code to physs to read nonlinearity correction coefficients and save
+  them in deployment record, along with spectrometer serial number.
+- Added analysis code to apply nonlinearity correction.
+- Improved background extraction, allowing for regions of negative
+  asorbance.
+- Added clipping mechanism to experimental library to ignore wavelengths
+  where foreground is negative.
+- Extended comparison curve mechanism to allow any of first three
+  curves to be added to comparison set.
+- Added code for simple pressure sensor calibration procedure.
+- Wrote nodejs version of analysisServer to replace python script.
+- Wrote nodejs version of opsServer, replacing python script.
+- Wrote nodejs version of utility to produce summary data; now called
+  summarize.
+- Changed handling of data files on BB to match handling on cloud server.
+- Added serialNumber file on Beaglebone, replacing config file entry.
+- Reorganized files and setup/installation procedures.
+- Replaced python xfer utility with javascript version.
+- Added support for real-time clock on arduino. Incorporated dateTime readout
+  into Status object.
+- Restructured interactions among threads; added new Waiter object.
+- Replaced individual informational queries with additional snapshot fields.
+- Changed procedure for optimizing integration time so that it falls back
+  on filtered sample water, when no reference water is available.
+
+version 0.0.9d - ongoing
+- added mainteance log feature
+
+==============================
+ 
+Working Notes
+
+Todo
+- Modify pressure calibration procedure, eliminating offset.
+
+- Security vulnerability. PHySS units share a private/public key pair for
+  communication with coolcloud. These are included in bitbucket repository
+  and copied to each physs unit, creating a big security hole.
+  Anyone who acquires a key can use it to login to coolcoud via the fizz login.
+  Originally, the private key was not in the repo, but copied separately
+  from my laptop. This was better, but still not great.
+  Better for each physs to have its own key pair, that is
+  generated locally, with only the public key ever passed to another machine.
+  This is a little more work but not that bad.
+
+- Termius on ios requires location tracking turned on, so that ios will
+  not shut it down after three minutes; this requires premium version of
+  termius ($10/month or $100 per year); android version may not have this
+  issue, but may still need premium version; some issues with ipad version
+  of chrome (1) next record text too large to fit well; reduce size a bit;
+  menus above text box are too low, raise 2-4 pixels; text in window is
+  gray; set color explicitly; console text is being displayed multiple
+  times; no idea what makes that happen; text for scripts etc does not
+  do this; chrome on ios does not support easy size versions
+  drop termius on ipad for now; maybe try it on phone
+
+Consider variants on opsConsole and analysisConsole that are
+suitable for cell phones and tablets. Still use browser and
+javascript, just a scaled down gui.
+
+How to get full copy of old version as follows
+1. Create fresh clone of current version
+2. In fresh clone use checkout command to get any desired version;
+
+   git checkout 620aca56615222b1999d35f0ce447d9e3faef344
+
+   changes files in the current cloned copy to those in commit with
+   the specified hash. Can use log command to find the right hash
+   value. For example
+
+   git log --since=2019-07-05 --until=2019-08-06
+   
+   returns all commits in the specified date range, along with their
+   hash values
+
+Consider replacing python servers with node.js equivalents
+- especially useful for python servers that currently use redundant
+  versions of analysis code; much easier to maintain consistent view
+- also, node.js servers can be more efficient and scalable
+- might eventually try using the express framework, but not clear
+  it's really useful for what we're doing now; might be useful for
+  authentication, allowing us to save mode libraries from registered
+  users; or for https access to fizz units
+
+Analysis console
+
+Can we compute the time-series from start of time-span,
+instead of from beginning of file? Until we can do this better,
+should probably make default time-span 0 0.
+
+
+Collector refinements
+
+Now that serial numbers are being handled differently,
+should really remove the serial number from the config
+file, as it should not be changed through the config file.
+Options include having a separate serial number file, or
+moving it to the state file. For now, will just put
+"DO NOT edit this line" in config files.
+
+skip arduino.finish() in collector and wait before exit
+to allow arduino time to shut down BB;
+we could avoid this work-around by using the EEPROM on
+the arduino board; think about it
+
+Consider adding a special thread for slow console commands,
+such as the spectrum and pump calibration commands.
+This would allow snapshot processing to continue during
+slow commands. Alternatively, could just do another one-off
+solution for spectrum acquisition, with separate acquire and
+show commands. Or, have a separate snapshot thread?
+
+Avoid redundant messages to arduino.
+Maybe, add idle mode message to arduino to turn off pumps, valves and lights,
+all at once.
+
+---------------------
+
+Pump and valve naming
+
+Arduino version creates issues with pumps. We can have up to six pumps
+but do not have six specific roles for pumps, so want to keep things
+generic. Could just use numeric indexes, but then ui cannot refer to
+pumps by name. Could assign names when creating pumps, but then we'll
+need multiple versions of initialization code, for every potential
+hardware configuration. May need a more general way of handling
+hardware configs. Two issues: controller config (cape, arduino, standalone)
+and plumbing config (basic, twoReagent, other...). The plumbing config
+determines which pumps we have and what they are called. Complication
+is that we've named pump objects (and valves). Could create a map from
+pump name to a specific object. Then use a reference to the returned
+object. Maybe make the map a class variable, so we can add names to
+it as pumps are created. Then there is the added issue of supply pumps.
+Maybe rather than have this a sub-class we should just associate a
+supply object with selected pumps at construction time. What about UI
+issues? Messages are ok, since they can just take the name. When
+pump names are used in commands, we can recognize by Pump suffix in
+first word, then use name to find required object. Of course console
+needs to deal with specfic configuration, with separate diagram for
+each. That's going to be a nuisance also. Maybe for now, I will just
+proceed with sample and reference pumps and defer consideration of
+next steps. For maximum flexibility, we could allow user to define
+pump names and indexes in the config file. Same for valves. This
+could easily become very elaborate, with config definitions for
+other things like comm link, spectrometer switching, etc. Not
+clear how to do many of these things in generic way.
+
+Not clear how to deal with MixValves. For now, just assume
+index values of 3,4,5 and let it go.
+
+Config file approach
+
+Supply name
+...
+Pump name index supplyName(optional)
+...
+Valve name index
+...
+Sensor name index
+...
+
+Internally, there is a mapping from pump name to Pump object.
+For each pump specified in config file, a Pump object is instantiated
+and inserted into the pump mapping. There is a similar valve mapping
+and Supply mapping.
+
+If a pump is specified with a supplyName, a pointer to the supply is
+included in the Pump object and the level is updated appropriately
+when the pump is run. Alternatively, I could just instantiate a
+SupplyPump when a supply name is provided.
+
+Informing users about elevated sim index values.
+- send alert emails
+  coolcloud supports this, thanks to help from Henry
+  now just need to complete the details
+
+Miscellany
+
+Consider changing the range for integration time adjustment to
+[57000,63000] and include it in the deployment record.
+Then, we can make the QA test dependent on the high and low
+values specified there, rather than the fixed constants.
+
+Chlorophyll values in model files are chlorphyll A concentrations
+in micrograms/liter. Can use this as a proxy for concentration of the
+phytoplankton species, although this is complicated by the sizes of
+the cells of different species, and related "package effects".
+
+Jim asks if we can have a summary showing the latest values of
+operational parameters for running units. Could scan all data
+files and get last cycle summary. Maybe add a command for analysis
+console that pulls all these values and returns them in a single
+message that can be displayed in the info area.
+
+--------------------
+
+Think through security for multiple users and organizations.
+- We now have everything passing through tunnels, so only users with
+  public keys can use any fizz and only those with passwords for a
+  specific fizz can operate (although all with public key can view it).
+- Currently no way to limit access to data to individuals from a specfic
+  organization. Cannot separate data files. Could add a file to the
+  data area for each fizz unit that specifies who can login. Then have
+  login and password for dataAnalyzer. Need to encrypt it to prevent
+  hacking.
+- Users with operator privileges on some fizz can view all fizzes,
+  including their data, but only have operator-access to a specfic fizz.
+
+Thinking ahead, how should we handle fizz units owned by others?
+One option is for them to use their own cloud server. This seems
+like the most desirable choice, although it takes some work for them
+to set up. Other option is for us host them on coolcloud. Maybe we
+should have separate logins for each organization. Can we use the
+ssh config file on coolcloud to control their tunnel usage? Seems
+sensible to restrict this. Need to get better understanding of
+ssh config files.
+
+-----------------------
+
+Space usage:
+20KB per spectrum, about 500 MB available, so 50*500 = 25000 spectra.
+If 5 spectra per cycle, that's 5000 cycles. At 5 minutes per cycle,
+we have 12*24=288 per day, so about 80 days. Adequate, but not a lot
+of margin. Could probably compress data by more than a factor of four.
+Surprisingly, binary format may not help much unless we use 32 bit format.
+Or, could go to binary integers to get two bytes per wavelength instead
+of 10.  Space estimate based on df report. Does not include separate
+flash chip. Re-evaluate using flash. Consider larger flash chips also.
+Of course flash chip write speed might become issue (well maybe not,
+at average of less than 20KB/s). Could we use the flash chip by simply
+making collector.rawData a link to file on the flash chip? Plugging in
+flash is not enough to make it show up on df. Probably need to mount it.
+Might also expand memory using usb flash drive (plus a hub so we can
+share usb port with spectrometer). Current card has 4 GB capacity.
+Can apparently buy cards with up to 32 GB capacity, so this should
+give us more than enough storage so that we can avoid compression.

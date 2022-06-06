@@ -1,0 +1,13 @@
+[Unit]
+Description=Setup ssh tunnels to control fizz through coolcloud
+Requires=ssh.service
+After=ssh.service
+
+[Service]
+Type=forking
+ExecStart=/usr/local/physs/fizzTunnels/start
+PIDFile=/usr/local/physs/fizzTunnels/pid
+Nice=-1
+
+[Install]
+WantedBy=opsConsole.service

@@ -1,0 +1,13 @@
+Host coolcloud
+        HostName coolcloud.mote.org
+        User fizz
+        Port 28102
+
+	ServerAliveInterval 30
+	ServerAliveCountMax 3
+
+        RemoteForward 28990 localhost:28200
+        RemoteForward 28991 localhost:28201
+        RemoteForward 28992 localhost:28202
+
+        LocalForward 28209 localhost:28109

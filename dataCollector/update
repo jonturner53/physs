@@ -1,0 +1,15 @@
+#! /bin/bash
+echo "updating data collector installation"
+
+echo "stopping collector and recompiling"
+systemctl stop collector
+make clean
+make all
+
+echo "copying code to /usr/local/bin and reloading systemd service file
+cp basicTest collector /usr/local/bin
+systemctl daemon-reload
+systemctl enable collector.service
+
+echo "re-starting collector"
+systemctl start collector

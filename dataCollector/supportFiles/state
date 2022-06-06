@@ -1,0 +1,27 @@
+cycleNumber = 1
+
+# pump parameters
+samplePumpMaxRate = 6
+referencePumpMaxRate = 6
+reagent1PumpMaxRate = 6
+reagent2PumpMaxRate = 6
+
+# supply reservoir levels
+referenceSupplyLevel = 500
+reagent1SupplyLevel = 500
+reagent2SupplyLevel = 500
+
+# pressure sensor parameters
+pressureSensorUpstreamOffset = 0.
+pressureSensorUpstreamScale = 18.
+pressureSensorDownstreamOffset = 0.
+pressureSensorDownstreamScale = 18.
+
+# spectrometer parameters
+integrationTime = 164
+
+# dataStore state
+currentIndex = 1
+deploymentIndex = 1
+spectrumCount = 0
+recordMap = dark.1

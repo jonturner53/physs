@@ -1,0 +1,6 @@
+# /bin/bash
+#
+# Start transfer receiver on cloud server.
+#
+cd /usr/local/physs/xfer
+node receiver.js "" 28109 >stdout 2>stderr &

@@ -1,0 +1,8 @@
+#! /bin/bash
+#
+# Start server for analysis console
+#
+cd /usr/local/physs/analysisConsole
+node server.js "" 28201 >stdout 2>stderr &
+	# note: use 28101 when running on coolcloud
+echo $! >pid

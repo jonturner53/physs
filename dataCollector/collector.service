@@ -1,0 +1,13 @@
+[Unit]
+Description=Data Collector for Programmable Seawater Scanner
+Requires=multi-user.target
+After=multi-user.target
+
+[Service]
+Type=forking
+PIDFile=/usr/local/physs/dataCollector/pid
+ExecStart=/usr/local/physs/dataCollector/start
+Nice=-2
+
+[Install]
+WantedBy=graphical.target

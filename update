@@ -1,0 +1,14 @@
+# !/bin/bash
+#
+# This script is used for updating installed programs following
+# a change. It runs child update scripts for the major fizz components.
+# Typically, changes will be made in one component and then the update
+# script for that component can be run, but if you really want to do it all..
+#
+
+cd dataCollector; ./update; cd ..
+cd opsConsole; ./update; cd ..
+cd analysisConsole; ./update; cd ..
+cd xfer; ./update; cd ..
+cd fizzTunnels; ./update; cd ..
+cd iptables; ./update; cd ..

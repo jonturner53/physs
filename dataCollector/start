@@ -1,0 +1,12 @@
+#! /bin/sh
+# 
+# Start the data collector.
+#
+
+BIN=/usr/local/bin
+
+cpufreq-set -u 300MHz
+cd /usr/local/physs/dataCollector
+cp collector ${BIN}/collector
+${BIN}/collector 2>stderr >stdout &
+echo $! >pid

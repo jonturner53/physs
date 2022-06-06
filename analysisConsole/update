@@ -1,0 +1,11 @@
+#! /bin/bash
+echo "updating analysisConsole"
+
+echo "stopping analysisConsole and reloading systemd control file"
+systemctl stop analysisConsole
+cp analysisConsole.service /lib/systemd/system
+systemctl daemon-reload
+systemctl enable analysisConsole.service
+
+echo "starting analysisConsole"
+systemctl start analysisConsole

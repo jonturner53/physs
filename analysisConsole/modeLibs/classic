@@ -1,0 +1,686 @@
+// raw spectrum
+// current spectrum and its direct prereqs
+mode raw
+group spectrum
+prereqs 1 2
+
+chart {{
+    out("Raw spectra\n\nblack curve is current spectrum\n" +
+        "blue is prereq 1, green is prereq 2\n");
+
+    addCurve(lib.rawWavelengths, spectrum);
+    if (prereq[0] != null)
+        addCurve(lib.rawWavelengths, prereq[0]);
+    if (prereq[1] != null)
+        addCurve(lib.rawWavelengths, prereq[1]);
+    y.max = 60000; y.interval = 5000;
+    if (record.label == "dark") {
+        y.max = 3000; y.interval = 500;
+    }
+    x.interval = 50;
+}}
+===========================================================================
+// absorption spectrum
+// shows absorption, shifted version and
+// parameters derived from fitted exponential
+mode absorption
+group spectrum
+labels filtered
+prereqs 1 2 21
+
+chart {{
+    if (prereq[0] == null || prereq[1] == null || prereq[2] == null) {
+        addCurve(lib.rawWavelengths, spectrum);
+        return;
+    }
+
+    let sample = lib.cook(spectrum, prereq[0]);
+    let reference = lib.cook(prereq[1], prereq[2]);
+    let spect = lib.absorption(sample, reference);
+    addCurve(lib.cookedWavelengths, spect);
+
+    let shiftedSpect = lib.vectorShift(spect);
+    let [a440, slope] = lib.absorptionParameters(shiftedSpect);
+
+    // compute quality assurance value (qa)
+    let qa = 1;
+    qa = Math.min(qa, lib.qaReference(prereq[1]));
+    qa = Math.min(qa, lib.qaAbsorption(spect, shiftedSpect, a440, slope));
+
+    // additional results dependent on qa value
+    if (qa == -1) { a440 = 0; slope = 0;
+    } else {
+        addCurve(lib.cookedWavelengths, shiftedSpect);
+        let expCurve = lib.absorpExpCurve(a440, slope);
+        addCurve(lib.cookedWavelengths, expCurve, "gray");
+    }
+    markup.label = "a440=" + a440.toFixed(3) + "    slope=" + slope.toFixed(4);
+    markup.qa = qa;
+
+    out("Absorption spectrum\n\n" +
+        "black curve is absorption from raw data\n" +
+        "blue is shifted version\n" +
+        "gray is exponential fit to shifted curve; absorption parameters " +
+        "are computed based on this curve\n\n" +
+        "absorption at 440 nm is " + a440.toFixed(3) + "\n" +
+        "exponential slope coefficient is " + slope.toFixed(4) + "\n");
+
+    y.max = 2; y.interval = .25; y.precision = 3;
+    x.min = lib.MINWAVE; x.max = lib.MAXWAVE;
+
+    // compute quality assurance value (qa)
+    markup.qa = 1;
+    markup.qa = Math.min(markup.qa, lib.qaReference(prereq[1]));
+    markup.qa = Math.min(markup.qa,
+                         lib.qaAbsorption(spect, shiftedSpect, a440, slope));
+}}
+============================================================================
+// absorbance spectrum
+// shows absorbance of sample plus all selected
+// phytoplankton models
+mode absorbance
+group spectrum
+labels concentrate unfiltered
+prereqs 1 2 21
+
+userArg modelCount 3
+
+chart {{
+    if (prereq[0] == null || prereq[1] == null || prereq[2] == null) {
+        addCurve(lib.rawWavelengths, spectrum);
+        return;
+    }
+    modelCount = parseInt(modelCount);
+
+    let sample = lib.cook(spectrum, prereq[0]);
+    let reference = lib.cook(prereq[1], prereq[2]);
+    let spect = lib.absorbance(sample, reference);
+    let mag = lib.vectorMagnitude(spect);
+    let fourth = lib.deriv(spect, 4, lib.derivSettings, 1/lib.waveDensity);
+    addCurve(lib.cookedWavelengths, spect);
+    markup.label = "";
+
+    let simx = lib.getAllSimx(fourth, 4);
+    simx.sort(function(a,b){return b.si-a.si;});
+
+    out("Absorbance spectra\n\n" +
+        "black curve is particle absorbance of sample spectrum\n" +
+        "others are scaled phytoplankton model spectra that most closely " +
+        "match sample spectrum (based on 4th derivative sim index)\n\n" +
+        "modelCount parameter specifies number of phyto model curves\n\n" +
+        "Sim index values for all models (starting with closest match)\n\n");
+
+    let first = true; let n = 0;
+    for (let i = 0; i < simx.length; i++) {
+        out(simx[i].si.toFixed(4) + " " + simx[i].name + "\n");
+        let model = phyto.model(simx[i].name);
+        if (!phyto.included(model.name) &&
+             (n >= modelCount || phyto.excluded(model.name))) continue;
+        sample = lib.cook(model.unfiltered, model.dark, model.wavelengths);
+        reference = lib.cook(model.filtered, model.dark, model.wavelengths);
+        let spect = lib.absorbance(sample, reference);
+        let mmag = lib.vectorMagnitude(spect);
+        spect = lib.vectorScale(spect, mag/mmag);
+        addCurve(lib.cookedWavelengths, spect);
+        if (first) first = false;
+        else markup.label += ", ";
+        markup.label += model.name + ":" + simx[i].si.toFixed(3);
+        n++;
+    }
+    addLine(lib.cookedWavelengths, Math.log10(1/.9), "gray");
+    y.max = .2; y.precision = 3; y.interval = .05; y.ticks = 5;
+    x.min = lib.SIM_MINWAVE; x.max = lib.SIM_MAXWAVE;
+    x.scaling = "none";
+
+    // compute quality assurance value (qa)
+    markup.qa = 1;
+    markup.qa = Math.min(markup.qa, lib.qaAbsorbance(spect));
+}}
+============================================================================
+// 4th derivative spectrum
+mode 4th deriv
+group spectrum
+labels concentrate unfiltered
+prereqs 1 2 21
+
+userMenu target sample [[
+    sample current sample
+    phyto selected phyto model
+]]
+
+userArg modelCount 3
+
+chart {{
+    if (prereq[0] == null || prereq[1] == null || prereq[2] == null) {
+        addCurve(lib.rawWavelengths,spectrum);
+        return;
+    }
+    modelCount = parseInt(modelCount);
+
+    let pmod = phyto.currentModel();
+    let sample = (target == 'sample' ?
+                        lib.cook(spectrum, prereq[0]) :
+                        lib.cook(pmod.unfiltered, pmod.dark, pmod.wavelengths));
+    let ref = (target == 'sample' ?
+                        lib.cook(prereq[1], prereq[2]) :
+                        lib.cook(pmod.filtered, pmod.dark, pmod.wavelengths));
+
+    let abs = lib.absorbance(sample, ref);
+    let fourth = lib.deriv(abs, 4);
+    let mag = lib.vectorMagnitude(fourth);
+    addCurve(lib.cookedWavelengths, fourth);
+
+    let simx = lib.getAllSimx(fourth, 4);
+    simx.sort(function(a,b){return b.si-a.si;});
+
+    out("4th derivative spectra\n\n" +
+        "black curve is 4th deriv of sample particle absorbance\n" +
+        "others are scaled phytoplankton model 4th deriv spectra that most " +
+        "closely match sample spectrum (based on sim index)\n\n" +
+        "modelCount parameter specifies number of phyto model curves\n\n" +
+        "Sim index values for all models (starting with closest match)\n\n");
+
+    markup.label = "";
+    let first = true; let n = 0;
+    for (let i = 0; i < simx.length; i++) {
+        let model = phyto.model(simx[i].name);
+        if (target == "phyto" && pmod.name == model.name) continue;
+        out(simx[i].si.toFixed(4) + " " + simx[i].name + "\n");
+        if (!phyto.included(model.name) &&
+             (n >= modelCount || phyto.excluded(model.name))) continue;
+        sample = lib.cook(model.unfiltered, model.dark, model.wavelengths);
+        ref = lib.cook(model.filtered, model.dark, model.wavelengths);
+        let modelFourth = lib.deriv(lib.absorbance(sample, ref), 4);
+        let mmag = lib.vectorMagnitude(modelFourth);
+        modelFourth = lib.vectorScale(modelFourth, mag/mmag);
+        addCurve(lib.cookedWavelengths, modelFourth);
+        if (first) first = false;
+        else markup.label += ", ";
+        markup.label += model.name + ":" + simx[i].si.toFixed(3);
+        n++;
+    }
+    markup.leftMargin = 65;
+    y.interval = 1.e-6; y.ticks = 5; y.scaling = "full"; y.precision = 3;
+    y.margin = .1;
+    x.min = lib.SIM_MINWAVE; x.max = lib.SIM_MAXWAVE; x.scaling = "none";
+
+    // compute quality assurance value (qa)
+    markup.qa = 1;
+    markup.qa = Math.min(markup.qa, lib.qaAbsorbance(abs));
+}}
+=========================================================================
+// time series of transmission intensity at 440 nm,
+// plus maximum transmission intensity
+mode transmission
+group time-series
+labels filtered
+
+userArg timeSpan 0 0
+
+datapoint {{
+    let result = null;
+    if (spectrum == null) return null;
+    let i440 = lib.functionValue(lib.rawWavelengths, spectrum, 440.);
+    let imax = lib.vectorMax(spectrum);
+    return [i440, imax];
+}}
+
+chart {{
+    out("Transmission intensity for filtered spectra\n\n" +
+        "black curve is intensity at 440nm, blue curve is max intensity\n\n");
+    for (let i = 0; i < yvecs.length; i++)
+        addCurve(xvec, yvecs[i]);
+    markup.rightHeader = "transmission values for " + "filtered " + "spectra";
+    y.max = 1;
+}}
+=========================================================================
+// absorption value at 440 nm from fitted
+// exponential curve
+// requires all prereqs
+mode absorption at 440
+group time-series
+labels filtered
+prereqs 1 2 21
+
+userArg .smoothWidth 1 // # of datapoints in moving average
+userArg timeSpan 0 0
+
+datapoint {{
+    if (spectrum == null || prereq[0] == null ||
+         prereq[1] == null || prereq[2] == null) 
+        return null;
+
+    let abs = lib.absorption(lib.cook(spectrum, prereq[0]),
+            				 lib.cook(prereq[1], prereq[2]));
+    let [a440] = lib.absorptionParameters(lib.vectorShift(abs));
+    return [a440];
+}}
+
+chart {{
+    out("CDOM absorption at 440 nm for filtered spectra\n");
+    addCurve(xvec, lib.vectorSmooth(yvecs[0], smoothWidth), "black");
+    addLine(xvec, Math.log(1/.9)/lib.waveguideLength, "gray");
+    markup.rightHeader = "absorption at 440 nm for " + "filtered spectra";
+    y.max = .5; y.precision = 3;
+}}
+=========================================================================
+// absorption slope parameter derived from fitted
+// exponential curve; prereqs required
+mode absorption slope
+group time-series
+labels filtered
+prereqs 1 2 21
+
+userArg timeSpan 0 0
+
+datapoint {{
+    let result = null;
+    if (spectrum != null && prereq[0] != null &&
+         prereq[1] != null && prereq[2] != null) {
+        let abs = lib.absorption(
+                      lib.cook(spectrum, prereq[0]),
+                      lib.cook(prereq[1],prereq[2]));
+        let [,slope] = lib.absorptionParameters(lib.vectorShift(abs));
+        result = [slope];
+    }
+    return result;
+}}
+
+chart {{
+    out("CDOM absorption slope parameter for filtered spectra\n");
+    addCurve(xvec, yvecs[0], "black");
+    markup.rightHeader = "absorption slope " + "filtered spectra";
+    y.max = .04; y.ticks = 8;
+    y.precision = 3;
+}}
+=========================================================================
+// average absorbance level for concentrate spectra;
+// prereqs required
+mode avg absorbance
+group time-series
+labels concentrate unfiltered
+prereqs 1 2 21
+userArg .smoothWidth 1 // # of datapoints in moving average
+userArg timeSpan 0 0
+
+datapoint {{
+    if (spectrum == null || prereq[0] == null ||
+         prereq[1] == null || prereq[2] == null)
+        return null;
+    let abs = lib.absorbance(lib.cook(spectrum, prereq[0]),
+                             lib.cook(prereq[1],prereq[2]));
+    let result = ["-", "-"];
+    if (record.label == "concentrate")
+        result[0] = lib.vectorAvg(abs);
+    else
+        result[1] = lib.vectorAvg(abs);
+    return result;
+}}
+
+chart {{
+    out("Average absorbance for concentrate and unfiltered spectra\n\n" +
+        "black curve is average absorbance of concentrate spectra,\n" +
+        "blue curve is average absorbance of unfiltered spectra\n");
+    let x0 = []; let x1 = []; let y0 = []; let y1 = [];
+    for (let i = 0; i < xvec.length; i++) {
+        if (yvecs[0][i] != "-") {
+            x0.push(xvec[i]); 
+            y0.push(yvecs[0][i]);
+        } else {
+            x1.push(xvec[i]); 
+            y1.push(yvecs[1][i]);
+        }
+    }
+    addCurve(x0, lib.vectorSmooth(y0, smoothWidth));
+    addCurve(x1, lib.vectorSmooth(y1, smoothWidth));
+    addLine(xvec, Math.log10(1/.9), "gray");
+    markup.rightHeader = "average absorbance for concentrate/unfiltered " +
+                         "spectra";
+    y.max = .3; y.ticks = 6; y.precision = 3;
+}}
+=========================================================================
+// similarity index values for top phytoplankton
+// models; prereqs required
+mode similarity index
+group time-series
+labels concentrate
+prereqs 1 2 21
+userArg .smoothWidth 1 // # of datapoints in moving average
+userArg modelCount 3
+userArg timeSpan 0 0
+
+datapoint {{
+    if (spectrum == null || prereq[0] == null ||
+         prereq[1] == null || prereq[2] == null ||
+         !phyto.allModelsPresent()) {
+        return null;
+    }
+    modelCount = parseInt(modelCount);
+
+    let sample = lib.cook(spectrum, prereq[0]);
+    let ref = lib.cook(prereq[1], prereq[2]);
+    let fourth = lib.deriv(lib.absorbance(sample, ref), 4);
+    let simx = lib.getAllSimx(fourth, 4);
+
+    let yv = [];
+    for (let i = 0; i < simx.length; i++)
+        yv.push(simx[i].si);
+    return yv;
+}}
+
+chart {{
+    out("Similarity index values for concentrate and unfiltered spectra\n\n" +
+        "modelCount specifies the number of phyto models to show on chart\n" +
+        "selected by average sim index value over specified time span\n" +
+        "specific phyto models can be included or excluded\n\n" +
+
+        "All phyto models listed in order of average sim index\n\n");
+
+    smoothWidth = parseInt(smoothWidth);
+    modelCount = parseInt(modelCount);
+
+    let simx = []; let i = 0;
+    for (let key in phyto.modelSet) {
+        let model = phyto.modelSet[key];
+        let avg = lib.vectorAvg(yvecs[i]);
+        simx.push({ name:model.name, siAvg:avg, i:i++ });
+    }
+    simx.sort(function(a,b){return b.siAvg-a.siAvg;});
+    let first = true; let n = 0;
+    for (let j = 0; j < simx.length; j++) {
+        out(simx[j].siAvg.toFixed(4) + " " + simx[j].name + "\n");
+        if (!phyto.included(simx[j].name) &&
+             (n >= modelCount || phyto.excluded(simx[j].name))) continue;
+        addCurve(xvec, lib.vectorSmooth(yvecs[simx[j].i], smoothWidth));
+        if (first) first = false;
+        else markup.label += " ";
+        markup.label += simx[j].name + ":" + (simx[j].siAvg).toFixed(3);
+        n++;
+    }
+    addLine(xvec, .7, "gray");
+    markup.rightHeader = "sim index for concentrate/unfiltered spectra";
+    y.min = .3; y.max = .95; y.ticks = 6; y.interval = .1;
+    y.precision = 3; y.margin = .1;
+    x.precision = 3;
+}}
+=========================================================================
+// battery voltage reported in cycle summary
+mode battery voltage
+group status
+userArg .smoothWidth 1 // # of datapoints in moving average
+
+userArg timeSpan 0 0
+
+datapoint {{
+    return [ record.battery ];
+}}
+
+chart {{
+    out("Voltage entering system over time, nominal 12V\n");
+    addCurve(xvec, lib.vectorSmooth(yvecs[0], this.smoothWidth), "black");
+    addLine(xvec, 10, "gray");
+    markup.rightHeader = "battery voltage";
+    y.min = 9; y.max = 15; y.interval = 1; y.precision = 3;
+    y.scaling = "expand"
+    y.ticks = 5;
+}}
+=========================================================================
+// filter pressure reported in cycle summary
+mode filter pressure
+group status
+
+userArg timeSpan 0 0
+
+datapoint {{
+    return [ record.pressure ];
+}}
+
+chart {{
+    out("Maximum pressure (psi) across filter during sample cycle\n");
+    addCurve(xvec, yvecs[0], "black");
+    markup.rightHeader = "filter pressure";
+    y.min = 0; y.max = 2; y.interval = 1;
+    y.precision = 2; y.ticks = 6;
+}}
+=========================================================================
+// depth measurement reported in cycle summary
+mode depth
+group status
+
+userArg timeSpan 0 0
+
+datapoint {{
+    let result = "0.0"
+    if (record.hasOwnProperty("depth"))
+        result = record.depth;
+    return [ result ];
+}}
+
+chart {{
+    out("Depth of sensor (meters)\n");
+    addCurve(xvec, yvecs[0], "black");
+    markup.rightHeader = "depth (meters)";
+    y.min = .2; y.max = 1.2; y.interval = .1;
+    y.precision = 2; y.ticks = 5;
+}}
+=========================================================================
+// remaining volume of reference fluid reported in
+// cycle summary
+mode reference level
+group status
+
+userArg timeSpan 0 0
+
+datapoint {{
+    return [ record.referenceLevel ];
+}}
+
+chart {{
+    out("Reference fluid level (ml)");
+    addCurve(xvec, yvecs[0], "black");
+    addLine(xvec, 50, "gray");
+    markup.rightHeader = "reference fluid level (ml)";
+    y.min = 0; y.max = 100; y.interval = 10;
+    y.precision = 0; y.ticks = 5;
+}}
+=========================================================================
+// spectometer integration time from cycle summary
+mode integration time
+group status
+
+userArg timeSpan 0 0
+
+datapoint {{
+    return [ record.integrationTime ];
+}}
+
+chart {{
+    out("Spectrometer integration time (ms)");
+    addCurve(xvec, yvecs[0], "black");
+    markup.rightHeader = "integration time (ms)";
+    y.min = 0; y.max = 100; y.interval = 20;
+    y.precision = 2; y.ticks = 5;
+}}
+=========================================================================
+// physs internal temperature from cycle summary
+mode temperature
+group status
+
+userArg timeSpan 0 0
+
+datapoint {{
+    return [ record.temp ];
+}}
+
+chart {{
+    out("Internal temperature (degrees C)\n");
+    addCurve(xvec, yvecs[0], "black");
+    markup.rightHeader = "physs internal " + "temperature (C)";
+    y.min = 20; y.max = 40; y.interval = 5;
+    y.precision = 3; y.ticks = 6;
+}}
+=========================================================================
+mode initialize
+group special
+
+init {{
+    /** Compute a "cooked" spectrum for a given
+     *  raw spectrum.
+     *  @param sample is a raw spectrum to be cooked
+     *  @param dark is associated dark spectrum 
+     *  @param wavelengths is an optional vector of raw
+     *  wavelengths; it defaults to lib.rawWavelengths
+     *  @return a spectrum obtained by first smoothing
+     *  and integerizing sample and dark, then taking
+     *  the difference between the results.
+     */
+    lib.cook = function(sample, dark, wavelengths=lib.rawWavelengths,
+                                settings=lib.smoothSettings) {
+        return lib.vectorSubtract(
+                lib.standardize(wavelengths, lib.smooth(sample, settings),
+                                lib.cookedWavelengths),
+                lib.standardize(wavelengths, lib.smooth(dark, settings),
+                                lib.cookedWavelengths));
+    };
+
+    /** Calculate the cdom absorption spectrum.
+     *  @param sample is a sample spectrum for which
+     *  absorption is required
+     *  @param ref is corresponding reference spectrum
+     *  return the reduced absorption values
+     */
+    lib.absorption = function(sample, ref) {
+        let absorp = new Array(sample.length).fill(0); 
+        for (let i = 0; i < sample.length; i++) {
+            if (ref[i] > sample[i] && sample[i] > 0)
+                absorp[i] = Math.log(ref[i] / sample[i]) /
+							lib.waveguideLength;
+        }
+        return absorp;
+    };
+
+    /** Calculate cdom absorption and slope parameters.
+     *  @param shiftedAbsorp is a shifted absorption
+     *  vector
+     *  @return the absorp440 and slope parameters
+     */
+    lib.absorptionParameters = function(shiftedAbsorp) {
+        let x = []; let y = [];
+        for (let i = lib.CDOM_LO; i < lib.CDOM_HI; i++) {
+            if (shiftedAbsorp[i] > 0) {
+                x.push(lib.cookedWavelengths[i] - 440);
+                y.push(Math.log(shiftedAbsorp[i]));
+            }
+        }
+        if (x.length < 20) return [0., 0.];
+        let z = lib.fitline(x,y);
+        return [Math.exp(z[0]), -z[1]];
+    };
+
+    lib.absorpExpCurve = function(a440, slope) {
+        let n = lib.cookedWavelengths.length;
+        let y = new Array(n);
+        for (let i = 0; i < n; i++) {
+            y[i] = a440 * Math.exp(-slope * (lib.cookedWavelengths[i] - 440));
+        }
+        return y;
+    };
+
+    /** Calculate the absorbance spectrum for
+     *  unfiltered samples.
+     *  @param sample is a sample spectrum for which
+     *  absorbance is required
+     *  ref is the corresponding reference spectrum
+     *  return the absorbance values
+     */
+    lib.absorbance = function(sample, ref) {
+        let absorb = new Array(sample.length).fill(0);
+        for (let i = 0; i < sample.length; i++) {
+            if (ref[i] > sample[i] && sample[i] > 0)
+                absorb[i] = Math.log10(ref[i] / sample[i]);
+        }
+        return absorb;
+    },
+
+    /** Compute the similarity index of a pair of vectors.
+     *  @param x is a vector
+     *  @param y is a vector of the same length
+	 *  @param range is an index range to restrict the similarity
+	 *  computation to a sub-range of the two vectors
+     */
+    lib.simIndex = function(x, y, range=[lib.SIM_LO, lib.SIM_HI]) {
+        return lib.angularSim(x, y, range);
+    };
+
+    lib.getAllSimx = function(dv, k) {
+        let results = [];
+        for (let key in phyto.modelSet) {
+            let model = phyto.modelSet[key];
+            let sample = lib.cook(model.unfiltered,
+                            model.dark, model.wavelengths);
+            let reference = lib.cook(model.filtered,
+                            model.dark, model.wavelengths);
+            let modelAbs = lib.absorbance(sample, reference);
+            let modelDv = lib.deriv(modelAbs, k);
+            let si = lib.simIndex(dv, modelDv);
+            results.push({ name: model.name, si: si });
+        }
+        return results;
+    };
+
+    /** Compute quality assurance value for reference spectrum.
+     *  @param ref is a reference spectrum
+     *  @return -1 if bad, 0 if marginal, 1 if ok
+     */
+    lib.qaReference = function(ref) {
+        let maxRef = lib.vectorMax(ref);
+        if (maxRef > 58500 || maxRef < 30000) return -1;
+        else if (maxRef < 54000) return 0;
+        return 1;
+    };
+
+    /** Compute quality assurance value for absorption spectrum.
+     *  @param abs is an absorbance spectrum
+     *  @param absShifted is the shifted version of abs
+     *  @param a440 is the computed absorbance at 440 nm (based on absShifted)
+     *  @param slope is the computed exponential slope parameter
+     *  @return -1 if bad, 0 if marginal, 1 if ok
+     */
+    lib.qaAbsorption = function(abs, absShifted, a440, slope) {
+        let thresh2 = Math.log(1/.98) / lib.waveguideLength;
+        let thresh5 = Math.log(1/.95) / lib.waveguideLength;
+        let below5 = false; let below2 = false;
+        let delta = 0; let total = 0.;
+        for (let i  = lib.CDOM_LO; i <= lib.CDOM_HI; i++) {
+            if (abs[i] < thresh2) below2 = true;
+            if (abs[i] < thresh5) below5 = true;
+            delta += Math.abs(absShifted[i] -
+                     a440 * Math.exp(-slope * (lib.cookedWavelengths[i]-440)));
+            total += absShifted[i];
+        }
+        let qa = (below2 ? -1 : (below5 ? 0 : 1));
+        if (delta > .2 * total) qa = -1;
+        else if (delta > .05 * total) qa = Math.min(qa, 0);
+        if (slope < .007 || slope > .025) qa = -1;
+        return qa;
+    };
+
+    /** Compute quality assurance value for absorbance spectrum.
+     *  @param ref is a reference spectrum
+     *  @return -1 if bad, 0 if marginal, 1 if ok
+     */
+    lib.qaAbsorbance = function(abs) {
+        let avg = lib.vectorAvg(abs);
+        if (avg < Math.log10(1/.98)) return -1;
+        else if (avg < Math.log10(1/.95)) return 0;
+        return 1;
+    };
+
+    /** Compute quality assurance value for model composition.
+     *  @param sim is a similarity index for a model.
+     *  @return -1 if bad, 0 if marginal, 1 if ok
+     */
+    lib.qaModelComp = function(sim, avgErr, maxErr) {
+        return (sim < .6 ? -1 : (sim < .7 ? 0 : 1));
+    };
+}}

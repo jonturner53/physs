@@ -1,0 +1,12 @@
+#! /bin/bash
+echo "first-time installation for xfer"
+echo 0 >pid
+echo 1 >nextRecord
+
+echo "installing systemd control file"
+cp xferSender.service /lib/systemd/system
+systemctl daemon-reload
+systemctl enable xferSender.service
+
+echo "starting xferSender"
+systemctl start xferSender.service

@@ -1,0 +1,287 @@
+<!doctype html5>
+<html>
+<head>
+<style>
+
+.headerFooter {
+	position: absolute;
+	background-color: navy;
+	margin: 0px;
+	font-family: "Verdana", sans-serif;
+	color: cyan;
+}
+
+.stdButton {
+	padding: 1px 5px 1px 5px;
+	border: 1px solid black;
+	background-color: beige;
+	font-family: "Verdana", sans-serif;
+	font-size: 100%;
+	border-radius: 5px;
+}
+
+.fixedWidthButton {
+	width: 50;
+	border: 1px solid black;
+	margin: 1px 0px 1px 0px;
+	padding: 1px 1px 1px 1px;
+	background-color: beige;
+	font-family: "Verdana", sans-serif;
+	font-size: 100%;
+	border-radius: 5px;
+}
+
+.scrollButton {
+	width: auto;
+	height: 18px;
+	border: 1px solid black;
+	padding: 1px 4px 1px 4px;
+	margin: 0px 0px 0px 0px;
+	font-family: "Verdana", sans-serif;
+	font-size: 90%;
+	background-color: beige;
+	border-radius: 5px;
+}
+
+.scrollButtons {
+	position: absolute;
+	font-family: "Verdana", sans-serif;
+	left: 125;
+	top: 225px;
+}
+</style>
+</head>
+
+<body>
+<div style="position:absolute; width: 800px; height: 567;
+			border-style: solid; border-width: 1px;">
+
+	<div id="header" class="headerFooter"
+		 style="top: 1; left: 1; width: 798;
+				text-align: center; padding: 4px 0 4px 0;"
+	>Programmable Hyperspectral Seawater Scanner</div>
+
+	<div style="font-family: Verdana; font-size: 80%;
+				position: absolute; top: 65; left: 10px;">
+		<center>
+		<button id="reloadButton" class="fixedWidthButton"
+			 onclick="main.reload()">reload</button> <p>
+		<button id="addBGcurve" class="fixedWidthButton"
+			 onclick="main.backgroundButton('a1')">add 1</button> <br>
+		<button id="addBGcurve" class="fixedWidthButton"
+			 onclick="main.backgroundButton('a2')">add 2</button> <br>
+		<button id="addBGcurve" class="fixedWidthButton"
+			 onclick="main.backgroundButton('a3')">add 3</button> <br>
+		<button id="dropBGcurve" class="fixedWidthButton"
+			 onclick="main.backgroundButton('d')">drop</button> <br>
+		<button id="showHideButton" class="fixedWidthButton"
+			 onclick="main.backgroundButton(
+				showHideButton.innerHTML=='show'?'s':'h')">show</button> <br>
+		</center>
+	</div>
+
+	<div style="font-family: Verdana; font-size: 75%; position: absolute;
+			   top:40; left:75;">
+		sn
+		<select id="serialNumMenu" style="font-size: 100%;" 
+				onchange="main.serialNumSelected()">
+		</select>
+		&nbsp;data
+		<select id="fileMenu" style="font-size: 100%;" 
+				onchange="main.datasetSelected()"> </select>
+		&nbsp;mode
+		<select id="modeMenu" style="font-size: 100%;" 
+				onchange="main.modeSelected();">
+		</select>
+		&nbsp;model
+		<select id="phytoMenu" style="font-size: 100%;" 
+				onchange="main.phytoSelected()"> </select>
+		<button id="phytoOnButton" class="scrollButton" 
+				style="width: 20px;"
+				onclick="main.phytoActive(true)"
+				style="border-radius:3px">+</button>
+		<button id="phytoOnButton" class="scrollButton" 
+				style="width: 20px;"
+				onclick="main.phytoActive(false)"
+				style="border-radius:3px">&minus;</button>
+	</div>
+
+	<canvas id="canvas" width="700" height="210"
+			style="border:1px solid gray;
+				   position:absolute; top:65; left:70;"
+				   onmousedown="main.mouseEvent(event, 'd')"
+				   onmousemove="main.mouseEvent(event, 'm')"
+				   onmouseup="main.mouseEvent(event, 'u')"
+				   onmouseout="main.mouseEvent(event, 'o');">
+	</canvas>
+
+	<div id="xycoord" style="position: absolute; left: 70; top: 285;
+							  font-size:75%; font-family:Verdana;"></div>
+
+	<div id="progressCounter" style="position: absolute; right: 20; top: 285;
+							  font-size:75%; font-family:Verdana;">0/0</div>
+
+	<div class="scrollButtons" style="font-family: Verdana; font-size: 75%;
+		left: 240; top: 283;">
+		<input type="text" size="15" value="" id="labelFilter"
+			   style="font-size: 100%">
+		&nbsp; 
+		<button class="scrollButton"
+				onclick="main.navButton('f')">first</button>
+		<button class="scrollButton"
+				onclick="main.navButton('<<')">&lt;&lt;</button>
+		<button class="scrollButton"
+				onclick="main.navButton('<')">&lt;</button>
+		<button class="scrollButton"
+				onclick="main.navButton('>')">&gt;</button>
+		<button class="scrollButton"
+				onclick="main.navButton('>>')">&gt;&gt;</button>
+		<button class="scrollButton"
+				onclick="main.navButton('l')">last</button>
+		&nbsp; 
+		<input type="text" size="3" value="5" id="jumpCount"
+			   style="font-size: 100%">
+	</div>
+
+	<div id="userArgsArea" style="font-family: Verdana; font-size: 70%; 
+		position: absolute; bottom:30; left:0; height:200px; width:200px;">
+		user arguments
+	</div>
+
+	<div style="font-family: Verdana; font-size: 75%; position: absolute;
+			   bottom:235; left:200;">
+		<select id="pageMenu" style="font-size: 100%;"
+			onchange="main.pageSelected()">
+			<option value="textOutput">text output</option>
+			<option value="chartData">chart data</option>
+			<option value="config">config</option>
+			<option value="script">script</option>
+			<option value="maintLog">maintenance log</option>
+			<option value="debug">debug</option>
+			<option value="cycleSummaries">cycle summaries</option>
+			<option value="currMode">current chart mode</option>
+			<option value="initMode">initalize mode</option>
+			<option value="allModes">all modes</option>
+			<option value="physsInfo">physs info</option>
+			<option value="phytoInfo">phyto model info</option>
+			<option value="log">error log</option>
+		</select>
+		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+		<select id="modeLibMenu" style="font-size: 100%;" value="config"
+				onchange="main.modeLibSelected()">
+			<option value="-">-</option>
+		</select>
+		<button class="stdButton" onclick="main.importUserLib()"
+			>import</button>
+		<button class="stdButton" onclick="main.exportToUserLib()"
+			>export</button>
+	</div>
+
+	<div style="font-family: Verdana; font-size: 75%; position: absolute;
+			   bottom:235; right:15;">
+		<button class="stdButton"><a id="downloadButton"
+				href="datafile" download="target">download</a></button>
+	</div>
+
+	<textarea id="pageArea"
+			  style="position: absolute; right: 0; bottom: 30;
+					 width: 600; height: 200px;
+					 color: black; font-family: courier; font-size: 75%;"
+	>there</textarea>
+
+	<div id="footerLeft" class="headerFooter"
+		 style="left: 1; bottom: 1; width: 610;
+				text-align: left; padding: 4px 0 4px 4px;"
+	>footerLeft</div>
+
+	<div id="footerRight" class="headerFooter"
+		 style="right: 1; bottom: 1; width: 210;
+				text-align: right; padding: 4px 4px 4px 0;"
+	>footerRight</div>
+</div>
+
+<script src="js/InfoPanel.js"></script>
+<script src="js/Main.js"></script>
+<script src="js/Mode.js"></script>
+<script src="js/ModeLib.js"></script>
+<script src="js/ModeLibMgr.js"></script>
+<script src="js/PhytoModels.js"></script>
+<script src="js/DatasetMgr.js"></script>
+<script src="js/Chart.js"></script>
+<script src="js/Library.js"></script>
+
+<script>
+
+/** Send a server request and process reply.
+ *  @param commandString is the string to be to the server;
+ *  before sending the prefix "anaysisConsole_2047_" is added.
+ *  @return a promise; use the promises then() method to define
+ *  the handler for the reply; use catch() method to handler errors
+ */
+function serverRequest(commandString, args=[]) {
+	return new Promise(function(resolve, reject) {
+		let request = new XMLHttpRequest();
+		request.open("GET", "dataAnalyzer_2047_" + commandString, true);
+		request.onload = function() {
+//console.log('reply to ' + commandString + ': ' + this.responseText.slice(0,200));
+			if (this.responseText.startsWith("Error")) {
+				main.log('serverRequest error:\n' +
+						 '\trequest: ' + commandString + '\n' +
+						 '\tresponse: ' + this.responseText + '\n');
+				if (reject) reject();
+			} else if (resolve) {
+				if (args.length == 0) resolve(this.responseText);
+				else resolve([this.responseText].concat(args));
+			}
+		}
+		request.onerror = function() {
+//console.log('error on ' + commandString + ': ' + this.request.statusText);
+			if (reject) {
+				reject(request.status, request.statusText);
+			} else {
+				console.log("serverRequest Error: " + request.statusText +
+							" [" + request.status + "]");
+			};
+		}
+//console.log('sending ' + commandString);
+		request.send();
+	});
+}
+
+let main = new Main();
+
+let info = new InfoPanel(document.getElementById("pageMenu"),
+						 document.getElementById("pageArea"));
+let chart = new Chart(document.getElementById("canvas"));
+let modeLibMgr = new ModeLibMgr(document.getElementById("userArgsArea"));
+let dset = new DatasetMgr();
+let phyto = new PhytoModels();
+
+// create library instances for use by each chart mode library
+let classicLib = new Library();  
+let standardLib = new Library();  
+let experimentalLib = new Library();   
+let userLib = new Library();  
+let lib = standardLib;	  // reassigned when new library loaded
+
+info.register("currMode", modeLibMgr.currentModeString, modeLibMgr);
+info.register("initMode", modeLibMgr.initModeString, modeLibMgr);
+info.register("allModes", modeLibMgr.allModesString, modeLibMgr);
+info.register("chartData", chart.getDataString, chart);
+info.register("textOutput", modeLibMgr.modeOutputText, modeLibMgr);
+info.register("config", dset.getConfigString, dset);
+info.register("script", dset.getScriptString, dset);
+info.register("maintLog", dset.getMaintLogString, dset);
+info.register("debug", dset.getDebugString, dset);
+info.register("cycleSummaries", dset.getCycleSumString, dset);
+info.register("physsInfo", dset.getPhyssInfoString, dset);
+info.register("phytoInfo", phyto.getModelInfoString, phyto);
+info.register("log", main.getLogString, main);
+
+modeLibMgr.init();
+phyto.init();
+dset.init();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+echo "first-time installation procedure"
+
+echo "adjusting login cosmetics"
+echo "Debian GNU/Linux BeagleBoard.org Debian 10.3 2020-04-06" >/etc/issue
+echo "Debian GNU/Linux BeagleBoard.org Debian 10.3 2020-04-06" >/etc/issue.net
+echo "fizz 99" >/etc/motd
+
+echo "configuring ssh for root"
+mkdir /root/.ssh
+chmod 700 /root/.ssh
+cp ssh_config /root/.ssh/config
+echo "ssh-keygen"
+ssh-keygen -C "Physs 99 `date`"
+chown root /root/.ssh/id_rsa
+chmod 600 /root/.ssh/id_rsa

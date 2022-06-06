@@ -1,0 +1,13 @@
+[Unit]
+Description=Server for Operations Console for Programmable Seawater Scanner
+Requires=multi-user.target
+After=multi-user.target
+
+[Service]
+Type=forking
+PIDFile=/usr/local/physs/opsConsole/pid
+ExecStart=/usr/local/physs/opsConsole/start
+Nice=-1
+
+[Install]
+WantedBy=graphical.target

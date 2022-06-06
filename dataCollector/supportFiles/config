@@ -1,0 +1,19 @@
+gpsCoordinates = N27.3329/W82.5771
+    # OT lab coordinates N27.3329/W82.5771
+    # New Pass coordinates N27.3338/W82.5794
+    # Sanibel coordinates N26.4344/W81.9648
+deploymentLabel = OT Lab
+
+waveguideLength = 0.28  # length in meters
+maxFilterPressure = 20
+maxDepth = 20
+
+hardwareConfig = BASIC
+autoRun = -1      # -1 means no autoRun
+                  # otherwise delay specified # of minutes
+                  # before starting automated sampling
+powerSave = 0     # 1 turns off comm link and spectrometer
+                  # between sample cycles
+portSwitching = 1
+ignoreFailures = 1
+logLevel = details details debug  # for console, stderr, debug

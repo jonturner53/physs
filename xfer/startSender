@@ -1,0 +1,7 @@
+#! /bin/sh
+# 
+# Start the data transfer sender (client) on fizz.
+#
+cd /usr/local/physs/xfer
+node sender.js "" 28209 >stdout 2>stderr &
+echo $! >pid

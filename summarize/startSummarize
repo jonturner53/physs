@@ -1,0 +1,6 @@
+# /bin/bash
+#
+# Start summarize utility on cloud server. Invoked as cron job.
+#
+cd /usr/local/physs/summarize
+node summarize.js >sum.stdout 2>sum.stderr

@@ -1,0 +1,521 @@
+<!doctype html5>
+<html>
+<head>
+<style>
+
+.headerFooter {
+	position: absolute;
+	background-color: navy;
+	margin: 0px;
+	font-family: "Verdana", sans-serif;
+	color: cyan;
+}
+
+.stateButton {
+	width: 65px;
+	height: 20px;
+	padding: 0px 2px 0px 2px;
+	margin: 0px 1px 0px 1px;
+	border: 1px solid black;
+	background-color: light-gray;
+	font-family: "Verdana", sans-serif;
+	border-radius: 5px;
+}
+
+.pumpControls {
+	position: absolute;
+	width: 35;
+	height: 36;
+	border-style: solid;
+	border-width: 1px;
+	padding: 0px 0px 0px 0px;
+}
+
+.pumpButton {
+	position: absolute;
+	width: 15px;
+	height: 15px;
+	padding: 0px 1px 0px 1px;
+	border: 1px solid black;
+	border-radius: 0px;
+}
+
+.pumpRate {
+	position: relative;
+	border-style: none;
+	background-color: transparent;
+}
+
+.supplyLevel {
+	position:absolute;
+	border-style: none;
+	background-color: transparent;
+	width: 30px;
+	height: 20px;
+}
+
+.powerButton {
+	width: 10px;
+	height: 15px;
+	padding: 0px 1px 0px 1px;
+	margin: 0px 1px 0px 1px;
+	border-width: 1px;
+	background-color: black;
+	font-size: 10%;
+}
+
+.lightButton {
+	position: absolute;
+	width: 9px;
+	height: 15px;
+	border-width: 1px;
+	background-color: black;
+	font-size: 10%;
+	padding: 0px 1px 0px 1px;
+}
+
+</style>
+</head>
+<body>
+
+<div style="position:absolute; width: 700px; height: 557;
+			border-style: solid; border-width: 1px;">
+
+	<div id="header" class="headerFooter"
+		 style="top: 1; left: 1; width: 698;
+				text-align: center; padding: 4px 0 4px 0;"
+	>header</div>
+
+	<div id="footerLeft" class="headerFooter"
+		 style="left: 1; bottom: 1; width: 510;
+				text-align: left; padding: 4px 0 4px 4px;"
+	>footerLeft</div>
+
+	<div id="footerRight" class="headerFooter"
+		 style="right: 1; bottom: 1; width: 210;
+				text-align: right; padding: 4px 4px 4px 0;"
+	>footerRight</div>
+
+	<div style="width: 100; position: absolute; top: 30px; left: 5px;">
+		<div id="cycleNumber" style="font-family: Verdana; font-size:80%;
+					position: absolute; top: 0; left: 3px;"
+			 >cycle: 0</div>
+		<button id="startStopButton" class="stateButton"
+			 style="position: absolute; top: 25; left: 2px;"
+			 onclick="fizz.newState(startStopButton)">start</button> 
+		<button id="resumeButton" class="stateButton"
+			 style="position: absolute; top: 47; left: 2px;"
+			 onclick="fizz.newState(resumeButton)">resume</button> 
+		<button id="quitButton" class="stateButton"
+			 style="position: absolute; top: 69; left: 2px;"
+			 onclick="fizz.newState(quitButton)">quit</button> 
+		<button id="clearButton" class="stateButton"
+			 style="position: absolute; top: 140; left:2px;"
+			 onclick="fizz.clear()">clear</button> 
+		<button id="xferButton" class="stateButton"
+			 style="position: absolute; top: 162; left: 2px;"
+			 onclick="xfer.enableDisable()">xfer</button> 
+		<div style="font-family: Verdana; font-size:80%; position: absolute;
+					top: 185; left: 0; width: 75; text-align: center;">
+			<div id="nextRecordText" style="position:absolute; 
+				top:0; right:1;text-align: center">next record 1</div>
+		</div>
+	</div>
+
+	<div style="position: absolute; left: 1; bottom: 30;
+                     width: 698; height: 270px;">
+		<textarea id="infoText"
+				  style="position: absolute; left: 0; bottom: 0;
+						 width: 698; height: 250px;
+						 color: black; font-family:courier; font-size: 75%;"
+		>there</textarea>
+
+		<div style="font-family: Verdana; font-size: 80%;
+				position: absolute; top: 0; left: 0;">
+			<select id="fileSelector" value="console"
+					onchange="info.refresh()">
+				<option value="console">console log</option>
+				<option value="collector.script">script</option>
+				<option value="collector.config">config</option>
+				<option value="collector.maintLog">maintenance log</option>
+				<option value="collector.state">state</option>
+				<option value="collector.debug">debug</option>
+				<option value="collector.stderr">collector.stderr</option>
+				<option value="opsServer.stderr">opsServer.stderr</option>
+			</select>
+		</div>
+	
+		<div style="font-family: Verdana; font-size: 80%; position: absolute;
+					top:0; left:275;">
+			log level:
+			<select id="logLevel" onchange="info.setLevel()">
+				<option value="fatal">fatal</option>
+				<option value="error">error</option>
+				<option value="warning">warning</option>
+				<option value="info">info</option>
+				<option value="details">details</option>
+				<option value="debug">debug</option>
+				<option value="trace">trace</option>
+			</select>
+		</div>
+
+		<button id="editSaveRefreshButton" class="stateButton"
+			style="background-color:beige;
+			position: absolute; top: 0px; right: 60;
+			width: 55; height: 18;" 
+			onclick="info.editSaveRefresh()">save</button>
+
+		<button id="showHideButton" class="stateButton"
+			style="background-color:beige;
+			position: absolute; top: 0; right: 2;
+			width: 55; height: 18;" 
+			onclick="info.enableComments()">hide</button>
+	</div>
+
+	<div style="position:absolute; top: 30px; left: 100px;
+				height: 210px; width: 595px;">
+		<div id="twoReagentsStuff" style="position:absolute; top: 11px;
+							left: 50px; visibility: hidden;">
+			<img id="twoReagentsImage" height="210"
+				 src="images/opsConsole2reagents.png">
+			<div id="reagent1Pump" class="pumpControls"
+				 style="left:175px; top:45;">
+				<input type="text" value="0" id="reagent1PumpRate"
+					style="height:20px;width:35px;"
+					class="pumpRate" onchange="reagent1Pump.changeRate()"> <br>
+				<button id="reagent1PumpState" class="pumpButton"
+					style="left:1;top:20;color:black;"
+					onclick="reagent1Pump.changeState()"></button>
+				<button id="reagent1PumpCalibrate" class="pumpButton"
+					style="left:18;top:20;background-color:beige;"
+					onclick="reagent1Pump.calibrate()">C</button>
+			</div>
+			<div id="reagent2Pump" class="pumpControls"
+				 style="left:265; top:45;">
+				<input type="text" value="0" id="reagent2PumpRate"
+					style="height:20px;width:35px;"
+					class="pumpRate" onchange="reagent2Pump.changeRate()"> <br>
+				<button id="reagent2PumpState" class="pumpButton"
+					style="left:1;top:20;color:black;"
+					onclick="reagent2Pump.changeState()"></button>
+				<button id="reagent2PumpCalibrate" class="pumpButton"
+					style="left:18;top:20;background-color:beige;"
+					onclick="reagent2Pump.calibrate()">C</button>
+			</div>
+			<input type="text" value="500" id="reagent1Supply"
+				style="left:138; top:5;"
+				class="supplyLevel" onchange="reagent1Supply.changeLevel()">
+			<input type="text" value="500" id="reagent2Supply"
+				style="left:226; top:5;"
+				class="supplyLevel" onchange="reagent2Supply.changeLevel()">
+	
+			<div id="mix1Valve" style="position:absolute; top:115; left:122;">
+				<img height="30" src="images/mix1Valve.png">
+				<button id="mix1ValveButton" onclick="mix1Valve.flip()"
+					style="position:absolute;top:3;left:5; visibility: visible;
+					opacity: 0;">|</button>
+			</div>
+			<div id="mix2Valve" style="position:absolute; top:115; left:300;">
+				<img height="30" src="images/mix2Valve.png">
+				<button id="mix2ValveButton" onclick="mix2Valve.flip()"
+					style="position:absolute;top:3;left:5; visibility: visible;
+					opacity: 0;">|</button>
+			</div>
+			<div id="midValve" style="position:absolute; top:114; left:208;">
+				<img height="30" src="images/midValve.png">
+			</div>
+		</div>
+	
+		<img id="basicConfigImage" height="210" src="images/opsConsoleBasic.png"
+				 style="position:absolute; top: 10; left: 50px;
+						visibility: visible;">
+	
+		<div style="width: 140; position: absolute; top: 2px; right: 5px;">
+			<div style="font-family: Verdana; font-size:80%;
+						position: absolute; top: 0; right: 0px;"
+				 id="temperature">temperature: 40.0C</div>
+			<div style="font-family: Verdana; font-size:80%;
+						position: absolute; top: 16; right: 0px;"
+				 id="batteryVoltage">battery: 12.0V</div>
+			<div style="font-family: Verdana; font-size:80%;
+						position: absolute; top: 32; right: 0px;"
+				 id="depth">depth: 1.0M</div>
+			<div style="font-family: Verdana; font-size:80%;
+						position: absolute; top: 48; right: 0px;"
+				 id="powerButtons">
+				power:
+				</button><button id="pumpValvePowerButton" class="powerButton"
+					onclick="fizz.updatePower(pumpValvePowerButton)"
+				></button><button id="lightSourcePowerButton"
+					class="powerButton"
+					onclick="fizz.updatePower(lightSourcePowerButton)"></button>
+			</div>
+			<div style="font-family: Verdana; font-size:80%;
+						position: absolute; top: 64; right: 0px;"
+				 id="leak">no leak</div>
+		</div>
+	
+		<div id="samplePump" class="pumpControls"
+			style="left:204px; top:157;">
+			<input type="text" value="0" id="samplePumpRate"
+				style="height:20px;width:35px;"
+				class="pumpRate" onchange="samplePump.changeRate()"> <br>
+			<button id="samplePumpState" class="pumpButton"
+				style="color:black;left:1;top:20;"
+				onclick="samplePump.changeState()"></button>
+			<button id="samplePumpCalibrate" class="pumpButton"
+				style="background-color:beige;top:20px;left:18px;"
+				onclick="samplePump.calibrate()">C</button>
+		</div>
+		<div id="referencePump" class="pumpControls"
+			 style="left:75px; top:60;">
+			<input type="text" value="0" id="referencePumpRate"
+				style="height:20px;width:35px;"
+				class="pumpRate" onchange="referencePump.changeRate()"> <br>
+			<button id="referencePumpState" class="pumpButton"
+				style="color:black;left:1;top:20;"
+				onclick="referencePump.changeState()"></button>
+			<button id="referencePumpCalibrate" class="pumpButton"
+				style="left:18;top:20;background-color:beige;"
+				onclick="referencePump.calibrate()">C</button>
+		</div>
+	
+		<input type="text" value="500" id="referenceSupply"
+			style="left:120; top:15;"
+			class="supplyLevel" onchange="referenceSupply.changeLevel()">
+	
+		<div id="filterValve"
+			 style="position:absolute; top:126; left:74; visibility: hidden;">
+			<img height="29" src="images/filterValve.png">
+			<button id="filterValveButton" onclick="filterValve.flip()"
+				style="position:absolute; top:5; left:2; visibility: visible;
+				opacity: 0;">|</button>
+		</div>
+		<div id="portValve"
+			style="position:absolute; top:165; left:257; visibility: hidden;">
+			<img height="30" src="images/portValve.png">
+			<button id="portValveButton" onclick="portValve.flip()"
+				style="position:absolute; top:3; left:5; visibility: visible;
+				opacity: 0;">|</button>
+		</div>
+	
+		<div style="width: 50; position: absolute; top: 160px; left: 50px;">
+			<div style="font-family: Verdana; font-size:70%;
+						position: absolute; top: 0; right: 0px;"
+				 id="filterPressure">0.0</div>
+			<div style="font-family: Verdana; font-size:70%;
+						position: absolute; top: 15; right: 0px;"
+				 id="maxPressure">0.0</div>
+		</div>
+	
+		<div id="lights"
+			 style="left:370; top:155; position: absolute; width:31; height:35;
+					border-style: solid; border-width: 1px;">
+			<input type="text" value="000" id="intTime"
+				style="width:30px; height:20px; position:absolute;left:0;top:0;
+					   border-style: none; background-color: transparent"
+				onchange="spectrometer.setIntTime()">
+			<button id="deutButton" class="lightButton"
+				style="left:1; top:19;"
+				onclick="spectrometer.setLights(deutButton)"></button> <br>
+			<button id="tungButton" class="lightButton"
+				style="left:11; top:19;"
+				onclick="spectrometer.setLights(tungButton)"></button> <br>
+			<button id="shutButton" class="lightButton"
+				style="left:21; top:19;"
+				onclick="spectrometer.setLights(shutButton)"></button> <br>
+		</div>
+	</div>
+
+	<button id="commandIcon" style="font-family:Verdana; font-size: 80%;
+				position: absolute; height: 17; top: 6; left: 6;
+				text-align: right; color:cyan; background-color:navy;
+				border-style:none;"
+				onclick="fizz.showHideCommand()">C</button>
+	<div id="commandArea"
+				style="font-family:Verdana; font-size: 80%; position: absolute;
+				height: 20; width: 200; top: 30; left: 2; text-align: left;
+				background-color:LightBlue; border-style:solid;
+				border-width: 1px; visibility:hidden">
+		<input type="text" value="<enter command here>" id="commandLine"
+			style="position: absolute; left:2; top:2; height:15;
+				   width:196px;"
+			onchange="fizz.enterCommand()">
+	</div>
+
+	<button id="loginIcon" style="font-family:Verdana; font-size: 80%;
+				position: absolute; height: 17; top: 6; right: 6;
+				text-align: right; color:cyan; background-color:navy;
+				border-style:none;"
+				onclick="login.showHide()">L</button>
+	<div id="loginArea"
+				style="font-family:Verdana; font-size: 80%; position: absolute;
+				height: 90; width:150; top: 120; right: 2; text-align: right;
+				background-color:LightBlue; border-style:solid;
+				border-width: 1px; visibility:hidden">
+		<div style="position:absolute; top:2; right:2">
+			user name <input type="text" id="userNameBox" value="none"
+						 style="width:70"><br>
+		</div>
+		<div style="position:absolute; top:24; right:2">
+			password <input type="password" id="passwordBox" value="none"
+							 style="width:70"> <p>
+		</div>
+		<button id="loginButton" class="stateButton"
+				style="background-color:beige;
+					   position: absolute; right: 2px;
+					   top: 47px;"
+			onclick="login.inOut()">login</button>
+		<button id="newpassButton" class="stateButton"
+				style="background-color:LightGray;
+					   font-size: 100%;
+					   position: absolute; right: 2px;
+					   top: 68;"
+			onclick="login.newpass()">new pwd</button>
+	</div>
+
+	<div id="screenSaver"
+		style="position: absolute; left: 1px; top: 30px; width: 698px;
+				height: 497; visibility: hidden;
+				background-color: gray; opacity: .5"></div>
+	<button id="wakeupButton" 
+		style="position: absolute; left: 350; top:250; border-radius: 10px;
+				padding: 20; font-size: 100%; background-color: beige;
+				visibility: hidden;"
+		onclick="screenSaver.wakeup()">wakeup</button>
+</div>
+
+<script src="js/HeaderFooter.js">console.log("hf");</script>
+<script src="js/Fizz.js">console.log("fizz");</script>
+<script src="js/Info.js">console.log("info");</script>
+<script src="js/Login.js">console.log("login");</script>
+<script src="js/Pump.js">console.log("pump");</script>
+<script src="js/Supply.js">console.log("supply");</script>
+<script src="js/ScreenSaver.js">console.log("ss");</script>
+<script src="js/Snapshot.js">console.log("snap");</script>
+<script src="js/Spectrometer.js">console.log("spec");</script>
+<script src="js/Valve.js">console.log("valve");</script>
+<script src="js/Xfer.js">console.log("xf");</script>
+
+<script>
+/** Send a server request and process reply.
+ *  @param commandString is the string to be to the server;
+ *  before sending the prefix "opsConsole_2047_" is added.
+ *  @return a promise; use the promises then() method to define
+ *  the handler for the reply; use catch() method to handler errors
+ */
+function serverRequest(commandString, args=[]) {
+	return new Promise(function(resolve, reject) {
+		let request = new XMLHttpRequest();
+		request.onreadystatechange = function() {
+			if (this.readyState == 4 && this.status == 200) {
+				let reply = extractReply(this.responseText);
+//if (!commandString.startsWith("snapshot"))
+//console.log("reply: " + reply);
+				if (resolve) resolve(reply, args);
+			}
+		}
+		request.onerror = function() {
+//console.log("failure");
+			if (reject) {
+				reject(request.status, request.statusText);
+			} else {
+				console.log("serverRequest Error: " + request.statusText +
+							" [" + request.status + "]");
+			};
+		}
+//if (!commandString.startsWith("snapshot"))
+//console.log("sending: " + commandString);
+		request.open("GET", login.cmdPfx + commandString, true);
+		request.send();
+	});
+}
+
+function inControl() {
+	return login.inSession && snapshot.collectorConnected &&
+		   !fizz.samplingEnabled;
+}
+
+/** Extract a console reply string from a group of lines received
+ *  from the fizz. Send embedded file text and console output to
+ *  info object as side-effect.
+ *  @param lines is a string containing one or more lines of text.
+ *  @return the first line that begins with '|' (excluding '\n').
+ */
+function extractReply(lines) {
+	let len = lines.length;
+	let inFile = false
+	let fileString = ''
+	let fileName = ''
+	let i = 0;
+	while (i < len) {
+		let j = lines.indexOf("\n", i);
+		if (j == -1) j = lines.length;
+		let line = lines.slice(i,j+1);
+		if (inFile) {
+			if (line.startsWith('|END_FILE')) {
+				info.updateText(fileName, fileString);
+				return line.slice(1,-1);
+			}
+			fileString += line;
+		} else if (line.startsWith('START_FILE')) {
+			fileName = line.slice(11,line.length-1)
+			inFile = true; fileString = '';
+		} else if (line.length > 0 && line[0] != '\n') {
+			if (line.indexOf("collector terminating:") == 0) {
+				snapshot.enable = false;
+				fizz.show();
+				return line;
+			}
+			if (line[0] == '|') {
+				if (line.startsWith('|session accepted')) {
+					info.updateText("console", line.slice(1,17) + '\n');
+				} else if (!line.startsWith('|snapshot reply') &&
+							!line.startsWith('|ERROR: lost connection') &&
+							!line.startsWith('|xferStatus:')) {
+					info.updateText("console", line.slice(1));
+				}
+				return line.slice(1,-1);
+			} else {
+				info.updateText("console", line);
+			}
+		}
+		i = j + 1;
+	}
+	return "";
+}
+
+
+// instantiate all objects
+let headerFooter = new HeaderFooter();
+let login = new Login();
+let xfer = new Xfer();
+let info = new Info();
+let fizz = new Fizz();
+
+let samplePump = new Pump("samplePump");
+let referencePump = new Pump("referencePump");
+let reagent1Pump = new Pump("reagent1Pump");
+let reagent2Pump = new Pump("reagent2Pump");
+
+let referenceSupply = new Supply("referenceSupply");
+let reagent1Supply = new Supply("reagent1Supply");
+let reagent2Supply = new Supply("reagent2Supply");
+
+let filterValve = new Valve("filterValve");
+let portValve = new Valve("portValve");
+let mix1Valve = new Valve("mix1Valve");
+let mix2Valve = new Valve("mix2Valve");
+let midValve = new Valve("midValve");
+
+let spectrometer = new Spectrometer();
+let snapshot = new Snapshot();
+let screenSaver = new ScreenSaver();
+
+headerFooter.init();
+info.refresh();
+snapshot.snapit();
+
+</script>
+</body>
+</html>

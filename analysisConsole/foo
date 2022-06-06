@@ -1,0 +1,97 @@
+============================================================================
+// similarity spectrum
+mode similarity spectrum
+group spectrum
+labels concentrate unfiltered
+prereqs 1 2 21
+
+userMenu target sample [[
+    sample current sample
+    phyto selected phyto model
+]]
+
+userArg derivIndex 4
+userArg modelCount 3
+userArg siRanges 400 700
+
+chart {{
+    if (prereq[0] == null || prereq[1] == null || prereq[2] == null) {
+        addCurve(lib.rawWavelengths, spectrum);
+        return;
+    }
+    out("Similarity spectra based on foreground of absorbance\n\n" +
+        "The target menu selects either the current sample spectrum or " +
+        "the spectrum of the currently selected phytoplankton model.\n\n" +
+        "The derivIndex parameter specifies which derivative to base " +
+        "the similarity index calculation on.\n\n" +
+        "The modelCount parameter specifies the number of phytoplankton " +
+        "model spectra to show, along with the target spectrum; " +
+        "these spectra are scaled to match magnitude of target.\n\n" +
+        "All spectra are clipped, using clipping method specified " +
+        "in adjust settings mode; sim index calculation omits wavelengths " +
+        "where either spectrum is clipped.\n\n");
+
+    let pmod = phyto.currentModel();
+    let [ sample, dark, ref, wavelengths, nlcCoef ] = (target == "sample" ?
+                [spectrum, prereq[0], prereq[1],
+                 lib.rawWavelengths, lib.nlcCoef] :
+                [pmod.unfiltered, pmod.dark, pmod.filtered,
+                 pmod.wavelengths, pmod.nlcCoef]);
+
+    derivIndex = parseInt(derivIndex);
+    modelCount = parseInt(modelCount);
+
+    siRanges = siRanges.trim().split(/ +/);
+	for (let i = 0; i < siRanges.length; i++)
+		siRanges[i] = parseInt(siRanges[i]) - lib.MINWAVE;
+	if (siRanges.length&1 == 1)
+		siRanges.push(lib.SIM_MAXWAVE - lib.MAXWAVE);
+	// siRanges is now a rake, assuming menu values are increasing
+
+    let absorb = lib.absorbance(sample, [dark,ref,dark], wavelengths, nlcCoef);
+    let foreground = lib.extractForeground(absorb);
+    let rake = lib.joinRakes(lib.makeRake(foreground, lib.validFore), siRanges);
+
+    let deriv = lib.deriv(foreground, derivIndex);
+    addCurve(lib.cookedWavelengths, lib.vectorCrop(deriv, rake));
+    markup.label = "";
+
+    let simx = lib.getAllSimx(foreground, derivIndex, rake);
+    simx.sort(function(a,b){return b.si-a.si;});
+
+	let mag = lib.vectorMagnitude(deriv, rake);
+    out("The black curve is the derivative of the target spectrum. " +
+	    "The vector magnitude of the deriviative is " + mag.toExponential(3) +
+        "\n\nSim indexes for all models (starting with closest match)\n\n");
+
+    markup.label = "";
+    let first = true; let n = 0;
+    for (let i = 0; i < simx.length; i++) {
+        let model = phyto.model(simx[i].name);
+        if (target == "phyto" && pmod.name == model.name) continue;
+        out(simx[i].si.toFixed(4) + " " + simx[i].name + "\n");
+        if (!phyto.included(model.name) &&
+             (n >= modelCount || phyto.excluded(model.name)))
+            continue;
+        n++;
+        let modelDeriv = lib.deriv(model.foreground, derivIndex);
+        let rakePair = lib.joinRakes(rake, model.rake);
+        let scale = lib.vectorMagnitude(deriv, rakePair) /
+                    lib.vectorMagnitude(modelDeriv, rakePair);
+        addCurve(lib.cookedWavelengths, lib.vectorScale(
+                            lib.vectorCrop(modelDeriv, rakePair), scale));
+                           // lib.vectorCrop(modelDeriv, model.rake), scale));
+		if (n > 3 && !phyto.included(model.name)) continue;
+        if (first) first = false;
+        else markup.label += ", ";
+        markup.label += model.name + ":" + simx[i].si.toFixed(3);
+    }
+	markup.label += " mag:" + mag.toExponential(3);
+    addLine(lib.cookedWavelengths, 0, "gray");
+    markup.leftMargin = 65;
+    y.interval = 1.e-6; y.ticks = 5; y.scaling = "full"; y.precision = 3;
+    y.margin = .1;
+    x.min = lib.SIM_MINWAVE; x.max = lib.SIM_MAXWAVE; x.scaling = "none";
+
+    markup.qa = lib.qaAbsorbance(sample, [dark,ref,dark], wavelengths, nlcCoef);
+}}

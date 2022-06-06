@@ -1,0 +1,24 @@
+echo "continuing first-time installation"
+
+# update node version
+echo "updating node version"
+npm cache clean -f
+npm install -g n
+n v14.17.0
+
+echo "creating miscellaneous directories and files"
+echo -n 99 >../serialNumber
+echo 0 >../fizzTunnels/pid
+mkdir -p /usr/local/physsData/sn99/raw
+
+cp lib* /usr/lib
+ln /usr/lib/libusb.so /usr/lib/libusb-0.1.so.4
+
+echo "running install scripts for components"
+cd ../dataCollector; ./install;
+cd ../opsConsole; ./install;
+cd ../analysisConsole; ./install;
+cd ../xfer; ./install;
+cd ../fizzTunnels; ./install;
+cd ../iptables; ./install;
+cd ../install

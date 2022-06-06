@@ -1,0 +1,13 @@
+[Unit]
+Description=Server for PHySS analysis console
+Requires=multi-user.target
+After=multi-user.target
+
+[Service]
+Type=forking
+PIDFile=/usr/local/physs/analysisConsole/pid
+ExecStart=/usr/local/physs/analysisConsole/start
+Nice=-1
+
+[Install]
+WantedBy=graphical.target

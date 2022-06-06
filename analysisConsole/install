@@ -1,0 +1,20 @@
+#! /bin/bash
+#
+# First-time installation for analysisConsole
+#
+
+echo "first-time installation for analysis console"
+echo "copying model files"
+cp -r models /usr/local/physsData
+
+echo "loading systemd control file"
+cp analysisConsole.service /lib/systemd/system
+systemctl daemon-reload
+systemctl enable analysisConsole.service
+
+echo "running npm init and install; respond to queries"
+npm init
+npm install express --save
+
+echo "starting analysisConsole"
+systemctl start analysisConsole

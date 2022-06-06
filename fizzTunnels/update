@@ -1,0 +1,7 @@
+#! /bin/bash
+echo "updating fizzTunnels installation"
+
+echo "replacing systemd service file"
+cp fizzTunnels.service /lib/systemd/system
+systemctl daemon-reload
+systemctl enable fizzTunnels.service

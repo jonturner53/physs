@@ -1,0 +1,18 @@
+#! /bin/bash
+echo "updating opsConsole"
+
+echo "stopping opsConsole and reloading systemd control file"
+systemctl stop opsConsole
+cp opsConsole.service /lib/systemd/system
+systemctl daemon-reload
+systemctl enable opsConsole.service
+
+echo "waiting for old opsConsole connection to go away"
+nstat=`netstat -an | grep 28200`
+while [ ${nstat} != "" ]; do
+    sleep 2
+    nstat=`netstat -an | grep 28200`
+done
+
+echo "starting opsConsole"
+systemmctl start opsConsole

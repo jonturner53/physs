@@ -1,0 +1,5 @@
+# !/bin/bash
+echo "first-time installation for iptables"
+cp iptables.service /lib/systemd/system
+systemctl daemon-reload
+systemctl enable iptables.service

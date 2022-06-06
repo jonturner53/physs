@@ -1,0 +1,22 @@
+#! /bin/bash
+echo "first-time installation for data collector"
+
+echo "setting up pid, config, script and state"
+echo 0 >pid
+cp supportFiles/config .
+cp supportFiles/script .
+cp supportFiles/state .
+echo "record maintenance notes here" >maintLog
+
+echo "full compile"
+make clean
+make all
+
+echo "copying executables to /usr/local/bin and loading systemd service file"
+cp basicTest collector /usr/local/bin
+cp collector.service /lib/systemd/system
+systemctl daemon-reload
+systemctl enable collector.service
+
+echo "starting collector"
+systemctl start collector
