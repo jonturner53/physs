@@ -1,13 +1,13 @@
 /** This module is used to receive the raw data output by the
  *  fizz data collector and store it on a remote server (such as
  *  coolcloud.mote.org).
- *  
+ *
  *  The server handles one connection at a time. When a remote client
  *  has records to send, it opens a connection and sends the records
  *  preceded by a line containing the first and last record indices
  *  plus a count. If the records are all received, server sends an
  *  ack, closes the socket and saves the records.
- *  
+ *
  *  Each received record is in the form of a json string,
  *  with a serial number, identifying the fizz unit that sent
  *  the data, a record index, identifying a unique record in the
@@ -22,7 +22,7 @@
  *  deployment of that fizz unit with names of the form depX
  *  where X is a record index, corresponding to the index
  *  of the deployment record for that deployment.
- *  
+ *
  *  usage: node receiver.js ip port
  *
  *  Port defaults to 28109, ip defaults to localhost.
@@ -136,7 +136,7 @@ server.on('connection', (sock) => {
 					if (conn.records.length == conn.recCount) {
 						// last line of block
 						sock.write(wrapup(conn) ? 'ACK\n': 'NACK\n');
-						sock.destroy(); 
+						sock.destroy();
 						delete connections[id];
 						return;
 					}
@@ -157,6 +157,8 @@ function wrapup(conn) {
 		let path = datapath + '/sn' + conn.serialNum
 		if (!isDir(path)) {
 			fs.mkdirSync(path + '/raw', { recursive: true, mode: 0o755 });
+			fs.chownSync(path + '/raw', 0, 521);  // set group id to 521 (physs)
+			fs.chmodSync(path + '/raw', 0o775);
 		}
 		let nextRecord = 1;
 		if (isFile(path + '/xfer.nextRecord')) {
@@ -178,12 +180,15 @@ function wrapup(conn) {
 			let pfx = path + '/raw/';
 			let sfx = pad10(rec.recordType == 'deployment' ?
 							rec.index : rec.deploymentIndex);
-			if (rec.recordType == 'deployment')
+			if (rec.recordType == 'deployment') {
 				fs.writeFileSync(pfx + 'new' + sfx, block);
-			else if (isFile(pfx + 'dep' + sfx))
+				fs.chownSync(pfx + 'new' + sfx, 0, 521);  // set group id to 521 (physs)
+				fs.chmodSync(pfx + 'new' + sfx, 0o664);
+			} else if (isFile(pfx + 'dep' + sfx)) {
 				fs.appendFileSync(pfx + 'dep' + sfx, block);
-			else if (isFile(pfx + 'new' + sfx))
+			} else if (isFile(pfx + 'new' + sfx)) {
 				fs.appendFileSync(pfx + 'new' + sfx, block);
+			}
 			nextRecord = conn.lastRx + 1;
 			fs.writeFileSync(path + '/xfer.nextRecord', '' + nextRecord);
 		}

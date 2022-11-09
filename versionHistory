@@ -244,27 +244,8 @@ Working Notes
 
 Todo
 - Modify pressure calibration procedure, eliminating offset.
-
-- Security vulnerability. PHySS units share a private/public key pair for
-  communication with coolcloud. These are included in bitbucket repository
-  and copied to each physs unit, creating a big security hole.
-  Anyone who acquires a key can use it to login to coolcoud via the fizz login.
-  Originally, the private key was not in the repo, but copied separately
-  from my laptop. This was better, but still not great.
-  Better for each physs to have its own key pair, that is
-  generated locally, with only the public key ever passed to another machine.
-  This is a little more work but not that bad.
-
-- Termius on ios requires location tracking turned on, so that ios will
-  not shut it down after three minutes; this requires premium version of
-  termius ($10/month or $100 per year); android version may not have this
-  issue, but may still need premium version; some issues with ipad version
-  of chrome (1) next record text too large to fit well; reduce size a bit;
-  menus above text box are too low, raise 2-4 pixels; text in window is
-  gray; set color explicitly; console text is being displayed multiple
-  times; no idea what makes that happen; text for scripts etc does not
-  do this; chrome on ios does not support easy size versions
-  drop termius on ipad for now; maybe try it on phone
+- Modify analysisConsole so that when new config file is uploaded,
+  the deployment label on the browser is updated
 
 Consider variants on opsConsole and analysisConsole that are
 suitable for cell phones and tablets. Still use browser and
@@ -285,35 +266,13 @@ How to get full copy of old version as follows
    returns all commits in the specified date range, along with their
    hash values
 
-Consider replacing python servers with node.js equivalents
-- especially useful for python servers that currently use redundant
-  versions of analysis code; much easier to maintain consistent view
-- also, node.js servers can be more efficient and scalable
-- might eventually try using the express framework, but not clear
-  it's really useful for what we're doing now; might be useful for
-  authentication, allowing us to save mode libraries from registered
-  users; or for https access to fizz units
-
 Analysis console
 
 Can we compute the time-series from start of time-span,
 instead of from beginning of file? Until we can do this better,
 should probably make default time-span 0 0.
 
-
 Collector refinements
-
-Now that serial numbers are being handled differently,
-should really remove the serial number from the config
-file, as it should not be changed through the config file.
-Options include having a separate serial number file, or
-moving it to the state file. For now, will just put
-"DO NOT edit this line" in config files.
-
-skip arduino.finish() in collector and wait before exit
-to allow arduino time to shut down BB;
-we could avoid this work-around by using the EEPROM on
-the arduino board; think about it
 
 Consider adding a special thread for slow console commands,
 such as the spectrum and pump calibration commands.
