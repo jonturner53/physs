@@ -27,7 +27,7 @@ passwd <secureRootPassword>
 
 # create physs directory, download code and install
 cd /usr/local
-git clone https://bitbucket.org/MoteOceanTechnology/physs
+git clone https://github.com/jonturner53/physs
 cd physs/install
 ./install1
 
